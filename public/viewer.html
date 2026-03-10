@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko" data-theme="light">
 <head>
@@ -528,6 +529,10 @@
     const transcript = document.getElementById('transcript');
     transcript.style.display = 'block';
 
+    // 현재 스크롤 위치 저장 (모바일에서 DOM 추가 시 밀리는 현상 방지)
+    const scrollY = window.scrollY;
+    const scrollEl = document.scrollingElement || document.documentElement;
+
     // 기존 latest 제거
     const prevLatest = transcript.querySelector('.latest');
     if (prevLatest) {
@@ -537,7 +542,19 @@
     }
 
     // 새 항목 추가
-    const div = appendItem(text, true, true);
+    const div = appendItem(text, false, true); // 애니메이션 없이 추가 (스크롤 방지)
+
+    // 스크롤 위치 즉시 복원 (브라우저가 움직이기 전에)
+    scrollEl.scrollTop = scrollY;
+    window.scrollTo({ top: scrollY, behavior: 'instant' });
+
+    // rAF 두 번으로 브라우저 렌더 후에도 위치 고정
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY, behavior: 'instant' });
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
+      });
+    });
 
     // 상태 업데이트
     const badge = direction === 'ko-en' ? '🇰🇷→🇺🇸' : '🇺🇸→🇰🇷';
@@ -548,15 +565,15 @@
     if (allTexts.length > 50) allTexts.shift();
     localStorage.setItem('sermon-transcript', JSON.stringify(allTexts));
 
-    // 사용자가 위에서 읽는 중이면 배너 표시, 아니면 자동 스크롤
-    if (userIsReading) {
-      document.getElementById('newBadge').classList.remove('show');
-      void document.getElementById('newBadge').offsetWidth; // 애니메이션 리셋
-      document.getElementById('newBadge').classList.add('show');
-    } else {
-      // 이미 하단 근처면 부드럽게 스크롤
-      setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
-    }
+    // 항상 배너 표시 (사용자가 탭해서 새 번역으로 이동)
+    const badgeEl = document.getElementById('newBadge');
+    badgeEl.classList.remove('show');
+    void badgeEl.offsetWidth;
+    badgeEl.classList.add('show');
+
+    // 5초 후 배너 자동 숨김
+    clearTimeout(badgeEl._timer);
+    badgeEl._timer = setTimeout(() => badgeEl.classList.remove('show'), 5000);
   }
 
 
@@ -582,3 +599,5 @@
 </script>
 </body>
 </html>
+
+
