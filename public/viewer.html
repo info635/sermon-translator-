@@ -206,10 +206,12 @@
       border-bottom: 1px solid var(--border-light);
       font-size: var(--fs);
       line-height: 1.95;
-      word-break: keep-all;
+      word-break: break-word;
+      overflow-wrap: break-word;
       text-align: left;
       letter-spacing: -.01em;
       transition: opacity .4s;
+      max-width: 100%;
     }
 
     /* 최신 항목 — 완전히 선명 */
@@ -374,11 +376,25 @@
     <button class="fs-btn" onclick="changeFontSize(+2)" aria-label="글자 크게">A+</button>
   </div>
   <span style="font-size:11px;color:var(--text-faint);font-family:'Noto Sans KR',sans-serif;">글자 크기</span>
+  <button class="icon-btn" onclick="showClearModal()" title="번역 내용 지우기" style="margin-left:auto;">🗑️</button>
 </div>
 
 <!-- 새 번역 알림 배너 -->
 <div id="newBadge" class="new-badge" onclick="scrollToLatest()">
   ↓ 새 번역이 추가됐습니다
+</div>
+
+<!-- 번역 내용 삭제 확인 모달 -->
+<div class="clear-modal-bg" id="clearModalBg" onclick="hideClearModal(event)">
+  <div class="clear-modal">
+    <div class="clear-modal-icon">🗑️</div>
+    <div class="clear-modal-title">번역 내용을 지우시겠습니까?</div>
+    <div class="clear-modal-desc">지금까지 번역된 모든 내용이 삭제됩니다.<br>이 작업은 되돌릴 수 없습니다.</div>
+    <div class="clear-modal-btns">
+      <button class="clear-cancel" onclick="hideClearModal()">취소</button>
+      <button class="clear-confirm" onclick="clearTranscript()">삭제</button>
+    </div>
+  </div>
 </div>
 
 <!-- 재연결 오버레이 -->
@@ -557,7 +573,8 @@
     });
 
     // 상태 업데이트
-    const badge = direction === 'ko-en' ? '🇰🇷→🇺🇸' : '🇺🇸→🇰🇷';
+    const badgeMap = { 'ko-en':'🇰🇷→🇺🇸', 'en-ko':'🇺🇸→🇰🇷', 'en-tl':'🇺🇸→🇵🇭', 'en-es':'🇺🇸→🇪🇸', 'en-zh':'🇺🇸→🇨🇳' };
+    const badge = badgeMap[direction] || '🔄';
     setStatus('connected', `실시간 연결됨 · ${badge}`);
 
     // 저장
@@ -593,6 +610,30 @@
     const latest = document.querySelector('.transcript-item.latest');
     if (latest) latest.scrollIntoView({ behavior: 'smooth', block: 'start' });
     document.getElementById('newBadge').classList.remove('show');
+  }
+
+  /* ── 번역 내용 삭제 ── */
+  function showClearModal() {
+    document.getElementById('clearModalBg').classList.add('show');
+  }
+  function hideClearModal(e) {
+    if (!e || e.target === document.getElementById('clearModalBg')) {
+      document.getElementById('clearModalBg').classList.remove('show');
+    }
+  }
+  function clearTranscript() {
+    // 화면 초기화
+    const transcript = document.getElementById('transcript');
+    transcript.innerHTML = '';
+    transcript.style.display = 'none';
+    document.getElementById('waiting').style.display = 'flex';
+
+    // 저장 데이터 삭제
+    allTexts = [];
+    localStorage.removeItem('sermon-transcript');
+
+    // 모달 닫기
+    document.getElementById('clearModalBg').classList.remove('show');
   }
 
   connect();
