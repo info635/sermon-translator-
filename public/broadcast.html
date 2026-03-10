@@ -4,6 +4,10 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>✝ 설교 번역 — 방송실</title>
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Mammoth.js (DOCX) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&family=Noto+Serif+KR:wght@400;600&display=swap');
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
@@ -11,7 +15,7 @@
       --bg:#0b0f18; --panel:#111826; --border:#1c2840;
       --gold:#c9a84c; --gdim:rgba(201,168,76,.15);
       --text:#dde6f0; --dim:#4a6080;
-      --green:#4ade80; --red:#f87171;
+      --green:#4ade80; --red:#f87171; --blue:#60a5fa;
     }
     body { background:var(--bg); color:var(--text); font-family:'Noto Sans KR',sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
@@ -33,50 +37,48 @@
     .copy-btn { background:var(--gdim); border:none; color:var(--gold); padding:4px 10px; border-radius:5px; font-size:11px; cursor:pointer; font-family:inherit; }
 
     /* 마이크 바 */
-    .mic-bar {
-      background:#0d1420; border-bottom:2px solid var(--border);
-      padding:14px 22px; display:flex; align-items:center; gap:14px; flex-shrink:0;
-    }
-    .mic-btn {
-      display:flex; align-items:center; gap:9px;
-      padding:10px 24px; border-radius:10px; border:none;
-      font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
-      background:linear-gradient(135deg,#1a3a1a,#1f4a1f);
-      color:var(--green); border:1px solid #2a5a2a; transition:all .25s;
-      white-space:nowrap;
-    }
-    .mic-btn.on {
-      background:linear-gradient(135deg,#3a0f0f,#5a1a1a);
-      color:var(--red); border-color:#7a2a2a;
-      animation:micGlow 1.5s infinite;
-    }
-    @keyframes micGlow {
-      0%,100%{ box-shadow:0 0 0 0 rgba(248,113,113,.4); }
-      50%    { box-shadow:0 0 0 10px rgba(248,113,113,0); }
-    }
-
-    /* 실시간 음성 표시 박스 */
-    .interim-box {
-      flex:1; min-height:42px;
-      background:rgba(255,255,255,.02); border:1px solid var(--border);
-      border-radius:8px; padding:10px 16px;
-      font-size:13px; color:#3a5070; font-style:italic;
-      display:flex; align-items:center; transition:all .3s;
-    }
+    .mic-bar { background:#0d1420; border-bottom:1px solid var(--border); padding:12px 22px; display:flex; align-items:center; gap:14px; flex-shrink:0; }
+    .mic-btn { display:flex; align-items:center; gap:9px; padding:9px 22px; border-radius:10px; border:none; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#1a3a1a,#1f4a1f); color:var(--green); border:1px solid #2a5a2a; transition:all .25s; white-space:nowrap; }
+    .mic-btn.on { background:linear-gradient(135deg,#3a0f0f,#5a1a1a); color:var(--red); border-color:#7a2a2a; animation:micGlow 1.5s infinite; }
+    @keyframes micGlow { 0%,100%{ box-shadow:0 0 0 0 rgba(248,113,113,.4); } 50%{ box-shadow:0 0 0 10px rgba(248,113,113,0); } }
+    .interim-box { flex:1; min-height:40px; background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:8px; padding:9px 14px; font-size:13px; color:#3a5070; font-style:italic; display:flex; align-items:center; }
     .interim-box.active { color:#7aafdf; border-color:#2a4060; font-style:normal; }
-
-    /* 자동번역 토글 */
     .auto-group { display:flex; align-items:center; gap:8px; white-space:nowrap; }
     .auto-group label { font-size:12px; color:var(--dim); }
     .toggle { position:relative; width:44px; height:24px; background:#1c2840; border-radius:12px; cursor:pointer; border:1px solid var(--border); transition:background .3s; flex-shrink:0; }
     .toggle.on { background:rgba(201,168,76,.35); border-color:var(--gold); }
     .toggle::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#4a6080; transition:all .3s; }
     .toggle.on::after { left:23px; background:var(--gold); }
-
-    /* 간격 선택 */
     .gap-group { display:flex; align-items:center; gap:8px; white-space:nowrap; }
     .gap-group label { font-size:12px; color:var(--dim); }
     .gap-group select { background:#1c2840; border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:6px; font-size:12px; font-family:inherit; cursor:pointer; outline:none; }
+
+    /* 참고자료 바 */
+    .ref-bar {
+      background:#0a1020; border-bottom:2px solid var(--border);
+      padding:10px 22px; display:flex; align-items:center; gap:12px; flex-shrink:0;
+    }
+    .ref-upload-btn {
+      display:flex; align-items:center; gap:8px;
+      padding:8px 18px; border-radius:9px; border:none;
+      font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+      background:linear-gradient(135deg,#0f1f3a,#162a4a);
+      color:var(--blue); border:1px solid #1e3a5a;
+      white-space:nowrap; transition:all .2s;
+    }
+    .ref-upload-btn:hover { border-color:#2a5a8a; }
+    .ref-status {
+      flex:1; display:flex; align-items:center; gap:10px;
+      background:rgba(255,255,255,.02); border:1px solid var(--border);
+      border-radius:8px; padding:7px 14px; font-size:12px; color:#3a5070; min-height:36px;
+    }
+    .ref-status.loaded { border-color:#1e3a5a; color:var(--blue); }
+    .ref-status.loaded .ref-dot { background:var(--blue); box-shadow:0 0 6px var(--blue); }
+    .ref-dot { width:6px; height:6px; border-radius:50%; background:#2a3a50; flex-shrink:0; }
+    .ref-clear { background:transparent; border:1px solid var(--border); color:#3a5070; padding:5px 12px; border-radius:6px; font-size:11px; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .ref-clear:hover { border-color:var(--red); color:var(--red); }
+    /* 파일 입력 숨기기 */
+    #fileInput { display:none; }
 
     /* 본문 */
     main { flex:1; display:grid; grid-template-columns:1fr 1fr; min-height:0; }
@@ -106,8 +108,29 @@
     .history-row { display:flex; gap:7px; overflow-x:auto; padding-bottom:3px; }
     .h-item { flex-shrink:0; max-width:200px; background:#0f1520; border:1px solid var(--border); border-radius:6px; padding:6px 11px; cursor:pointer; }
     .h-item:hover { border-color:#2c3f58; }
-    .h-time    { font-size:9px;  color:#1c2840; margin-bottom:3px; }
+    .h-time    { font-size:9px; color:#1c2840; margin-bottom:3px; }
     .h-preview { font-size:11px; color:#2c3f58; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* 참고자료 미리보기 모달 */
+    .modal-bg {
+      position:fixed; inset:0; background:rgba(0,0,0,.7);
+      display:none; align-items:center; justify-content:center; z-index:50;
+      backdrop-filter:blur(4px);
+    }
+    .modal-bg.show { display:flex; }
+    .modal {
+      background:#0f1826; border:1px solid var(--border);
+      border-radius:14px; width:640px; max-height:80vh;
+      display:flex; flex-direction:column; overflow:hidden;
+    }
+    .modal-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+    .modal-title { font-size:14px; font-weight:600; color:var(--blue); }
+    .modal-close { background:transparent; border:none; color:var(--dim); font-size:20px; cursor:pointer; line-height:1; }
+    .modal-body { flex:1; overflow-y:auto; padding:18px 20px; }
+    .modal-txt { font-size:13px; color:#7090b0; line-height:1.85; white-space:pre-wrap; word-break:break-word; }
+    .modal-foot { padding:12px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+    .btn-blue { padding:8px 20px; border-radius:8px; border:none; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#1a4a8a,#1e5a9a); color:#90c8ff; transition:all .2s; }
+    .btn-blue:hover { transform:translateY(-1px); }
 
     ::-webkit-scrollbar { width:3px; height:3px; }
     ::-webkit-scrollbar-thumb { background:#1c2840; border-radius:2px; }
@@ -137,23 +160,36 @@
   </div>
 </header>
 
+<!-- 참고자료 업로드 바 -->
+<div class="ref-bar">
+  <button class="ref-upload-btn" onclick="document.getElementById('fileInput').click()">
+    <span>📎</span>
+    <span>참고자료 업로드</span>
+  </button>
+  <input type="file" id="fileInput" accept=".pdf,.docx,.txt" onchange="handleFile(event)"/>
+
+  <div id="refStatus" class="ref-status">
+    <div class="ref-dot"></div>
+    <span id="refStatusTxt">PDF · DOCX · TXT 파일을 업로드하면 번역 품질이 향상됩니다</span>
+  </div>
+
+  <button id="refPreviewBtn" class="btn-sm" style="display:none;" onclick="showModal()">미리보기</button>
+  <button id="refClearBtn" class="ref-clear" style="display:none;" onclick="clearRef()">✕ 삭제</button>
+</div>
+
 <!-- 마이크 바 -->
 <div class="mic-bar">
-
   <button id="micBtn" class="mic-btn" onclick="toggleMic()">
     <span>🎤</span>
     <span id="micLabel">음성 인식 시작</span>
   </button>
-
   <div id="interimBox" class="interim-box">
     마이크 버튼을 누르면 설교자의 음성을 자동 인식합니다...
   </div>
-
   <div class="auto-group">
     <label>자동 번역</label>
     <div id="autoToggle" class="toggle on" onclick="toggleAuto()"></div>
   </div>
-
   <div class="gap-group">
     <label>번역 간격</label>
     <select id="gapSel">
@@ -163,12 +199,10 @@
       <option value="30000">30초</option>
     </select>
   </div>
-
 </div>
 
 <!-- 본문 -->
 <main>
-  <!-- 왼쪽: 영어 -->
   <div class="panel">
     <div class="panel-top">
       <span class="panel-label">🎤 영어 원문 (음성 인식 결과)</span>
@@ -184,7 +218,6 @@
     </div>
   </div>
 
-  <!-- 오른쪽: 한국어 -->
   <div class="panel">
     <div class="panel-top">
       <span class="panel-label">🇰🇷 한국어 번역</span>
@@ -210,13 +243,38 @@
   <div id="histRow" class="history-row"></div>
 </div>
 
+<!-- 참고자료 미리보기 모달 -->
+<div class="modal-bg" id="modalBg" onclick="hideModal(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">📎 참고자료 내용</span>
+      <button class="modal-close" onclick="hideModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalTxt" class="modal-txt"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sm" onclick="hideModal()">닫기</button>
+      <button class="btn-blue" onclick="hideModal()">✅ 확인 — 번역에 적용됨</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
+  // PDF.js 워커 설정
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
   const API = '/api/translate';
   const histArr = [];
   let koText = '';
   let isTranslating = false;
+  let refText = '';      // 참고자료 텍스트
+  let refFileName = '';  // 업로드된 파일명
 
   // 뷰어 URL
   const vUrl = location.origin + '/viewer';
@@ -230,44 +288,123 @@
     document.getElementById('wc').textContent = n + ' 단어';
   }
 
-  // ──────────────────────────────────────────
-  // 🎤 음성 인식 (Chrome 내장 Web Speech API)
-  // 추가 비용 없음, API 키 불필요
-  // ──────────────────────────────────────────
+  // ────────────────────────────────────────
+  // 📎 참고자료 파일 처리
+  // ────────────────────────────────────────
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    refFileName = file.name;
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    setRefStatus('loading', `⏳ ${file.name} 읽는 중...`);
+
+    try {
+      if (ext === 'txt') {
+        refText = await file.text();
+      } else if (ext === 'pdf') {
+        refText = await extractPDF(file);
+      } else if (ext === 'docx') {
+        refText = await extractDOCX(file);
+      } else {
+        toast('❌ PDF, DOCX, TXT 파일만 지원합니다');
+        return;
+      }
+
+      // 너무 길면 앞부분만 사용 (Claude 컨텍스트 절약)
+      const MAX_CHARS = 8000;
+      if (refText.length > MAX_CHARS) {
+        refText = refText.slice(0, MAX_CHARS) + '\n\n[... 이하 생략 ...]';
+      }
+
+      setRefStatus('loaded', `✅ ${file.name} (${Math.round(refText.length / 100) / 10}KB 로드됨)`);
+      document.getElementById('refPreviewBtn').style.display = 'block';
+      document.getElementById('refClearBtn').style.display = 'block';
+      document.getElementById('modalTxt').textContent = refText;
+      toast(`✅ 참고자료 로드됨 — 이제 번역 시 자동으로 참고합니다`);
+
+    } catch(err) {
+      setRefStatus('', '❌ 파일 읽기 오류: ' + err.message);
+      toast('❌ 파일을 읽을 수 없습니다');
+    }
+
+    // 파일 입력 초기화 (같은 파일 재업로드 허용)
+    e.target.value = '';
+  }
+
+  // PDF 텍스트 추출
+  async function extractPDF(file) {
+    const ab = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join(' ') + '\n';
+    }
+    return text.trim();
+  }
+
+  // DOCX 텍스트 추출
+  async function extractDOCX(file) {
+    const ab = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: ab });
+    return result.value.trim();
+  }
+
+  function setRefStatus(state, msg) {
+    const el = document.getElementById('refStatus');
+    const txt = document.getElementById('refStatusTxt');
+    el.className = 'ref-status' + (state === 'loaded' ? ' loaded' : '');
+    txt.textContent = msg;
+  }
+
+  function clearRef() {
+    refText = '';
+    refFileName = '';
+    setRefStatus('', 'PDF · DOCX · TXT 파일을 업로드하면 번역 품질이 향상됩니다');
+    document.getElementById('refPreviewBtn').style.display = 'none';
+    document.getElementById('refClearBtn').style.display = 'none';
+    document.getElementById('modalTxt').textContent = '';
+    toast('참고자료가 삭제됐습니다');
+  }
+
+  function showModal() { document.getElementById('modalBg').classList.add('show'); }
+  function hideModal(e) {
+    if (!e || e.target === document.getElementById('modalBg') || !e.target) {
+      document.getElementById('modalBg').classList.remove('show');
+    }
+  }
+
+  // ────────────────────────────────────────
+  // 🎤 음성 인식
+  // ────────────────────────────────────────
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition  = null;
-  let isListening  = false;
-  let autoMode     = true;
+  let recognition = null;
+  let isListening = false;
+  let autoMode = true;
   let silenceTimer = null;
 
   function toggleMic() {
-    if (!SpeechRecognition) {
-      toast('❌ Chrome 브라우저에서만 음성인식이 작동합니다');
-      return;
-    }
+    if (!SpeechRecognition) { toast('❌ Chrome 브라우저에서만 음성인식이 작동합니다'); return; }
     isListening ? stopMic() : startMic();
   }
 
   function startMic() {
     recognition = new SpeechRecognition();
-    recognition.lang           = 'en-US';   // 영어 설교 인식
-    recognition.continuous     = true;       // 계속 듣기
-    recognition.interimResults = true;       // 말하는 중에도 표시
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
-    // 음성 인식 결과 처리
     recognition.onresult = (e) => {
       let interim = '';
-
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
-
         if (e.results[i].isFinal) {
-          // ✅ 문장 완성 → 입력창에 누적
           const cur = document.getElementById('src').value;
           document.getElementById('src').value = (cur + ' ' + t).trim();
           updateWC();
-
-          // 자동 번역 모드: N초 후 자동 번역
           if (autoMode) {
             clearTimeout(silenceTimer);
             const gap = parseInt(document.getElementById('gapSel').value);
@@ -276,38 +413,18 @@
               if (txt && !isTranslating) doTranslate();
             }, gap);
           }
-        } else {
-          // 🔄 인식 중 (회색으로 표시)
-          interim += t;
-        }
+        } else { interim += t; }
       }
-
-      // 인식 중인 텍스트 실시간 표시
       const box = document.getElementById('interimBox');
-      if (interim) {
-        box.textContent = '🎤 ' + interim;
-        box.classList.add('active');
-      } else {
-        box.textContent = '✅ 인식 중... (문장 완성되면 자동 번역)';
-        box.classList.remove('active');
-      }
+      if (interim) { box.textContent = '🎤 ' + interim; box.classList.add('active'); }
+      else { box.textContent = '✅ 인식 중...'; box.classList.remove('active'); }
     };
 
-    // 마이크 권한 거부 처리
     recognition.onerror = (e) => {
-      if (e.error === 'not-allowed') {
-        toast('❌ 마이크 권한을 허용해주세요 — 주소창 왼쪽 자물쇠 🔒 아이콘 클릭');
-        stopMic();
-      } else if (e.error === 'no-speech') {
-        // 무음 — 정상, 무시
-      }
+      if (e.error === 'not-allowed') { toast('❌ 마이크 권한을 허용해주세요'); stopMic(); }
     };
-
-    // 인식 중단되면 자동 재시작 (continuous 보완)
     recognition.onend = () => {
-      if (isListening) {
-        setTimeout(() => { try { recognition.start(); } catch(e){} }, 200);
-      }
+      if (isListening) setTimeout(() => { try { recognition.start(); } catch(e){} }, 200);
     };
 
     try {
@@ -315,12 +432,10 @@
       isListening = true;
       document.getElementById('micBtn').classList.add('on');
       document.getElementById('micLabel').textContent = '음성 인식 중 — 클릭하면 정지';
-      document.getElementById('interimBox').textContent = '🎤 마이크 준비됨 — 설교자가 말하면 자동 인식됩니다';
+      document.getElementById('interimBox').textContent = '🎤 마이크 준비됨';
       document.getElementById('interimBox').classList.add('active');
       toast('🎤 음성 인식 시작됐습니다');
-    } catch(e) {
-      toast('마이크 오류: ' + e.message);
-    }
+    } catch(e) { toast('마이크 오류: ' + e.message); }
   }
 
   function stopMic() {
@@ -331,18 +446,17 @@
     document.getElementById('micLabel').textContent = '음성 인식 시작';
     document.getElementById('interimBox').textContent = '음성 인식이 중지됐습니다.';
     document.getElementById('interimBox').classList.remove('active');
-    toast('⏹ 음성 인식 중지됨');
   }
 
   function toggleAuto() {
     autoMode = !autoMode;
     document.getElementById('autoToggle').classList.toggle('on', autoMode);
-    toast(autoMode ? '✅ 자동 번역 켜짐' : '🔕 자동 번역 꺼짐 — 버튼으로 수동 번역');
+    toast(autoMode ? '✅ 자동 번역 켜짐' : '🔕 자동 번역 꺼짐');
   }
 
-  // ──────────────────────────────────────────
+  // ────────────────────────────────────────
   // 번역 실행
-  // ──────────────────────────────────────────
+  // ────────────────────────────────────────
   async function doTranslate() {
     const text = document.getElementById('src').value.trim();
     if (!text) { toast('번역할 텍스트가 없습니다'); return; }
@@ -356,7 +470,6 @@
     document.getElementById('result').textContent = '번역 중...';
     document.getElementById('sentLbl').textContent = '';
 
-    // 입력창 비우기 (다음 문장 준비)
     const textToSend = text;
     document.getElementById('src').value = '';
     updateWC();
@@ -365,20 +478,24 @@
       const r = await fetch(API, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ text: textToSend })
+        body: JSON.stringify({
+          text: textToSend,
+          refText: refText || null   // ← 참고자료 함께 전송
+        })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '서버 오류');
 
       koText = d.korean;
       document.getElementById('result').textContent = koText;
-      document.getElementById('sentLbl').textContent = '✅ 성도 화면 전송 완료';
+      document.getElementById('sentLbl').textContent = refText
+        ? '✅ 참고자료 반영 · 성도 화면 전송 완료'
+        : '✅ 성도 화면 전송 완료';
       document.getElementById('lastTime').textContent = new Date().toLocaleTimeString('ko-KR');
       addHistory(textToSend, koText);
       toast('✅ 번역 완료 — 성도 화면에 전송됐습니다');
 
     } catch(e) {
-      // 실패 시 텍스트 복원
       document.getElementById('src').value = textToSend;
       updateWC();
       document.getElementById('result').textContent = '오류: ' + e.message;
@@ -412,14 +529,8 @@
 
   // 서버 상태
   fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{"text":"ping"}' })
-    .then(() => {
-      document.getElementById('dot').className = 'badge-dot ok';
-      document.getElementById('statusTxt').textContent = '서버 연결됨';
-    })
-    .catch(() => {
-      document.getElementById('dot').className = 'badge-dot err';
-      document.getElementById('statusTxt').textContent = '서버 오류';
-    });
+    .then(() => { document.getElementById('dot').className='badge-dot ok'; document.getElementById('statusTxt').textContent='서버 연결됨'; })
+    .catch(() => { document.getElementById('dot').className='badge-dot err'; document.getElementById('statusTxt').textContent='서버 오류'; });
 
   function copyUrl() { navigator.clipboard.writeText(vUrl); toast('성도 링크 복사됨!'); }
   function copyKo()  { if (koText) { navigator.clipboard.writeText(koText); toast('번역문 복사됨!'); } }
