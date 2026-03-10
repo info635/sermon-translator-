@@ -1,384 +1,86 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>✝ 설교 번역 — 방송실</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&family=Noto+Serif+KR:wght@400;600&display=swap');
+// api/translate.js
+// ✝ 설교 번역 서버 — Claude로 번역하고 Pusher로 성도에게 전송
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+const Pusher = require('pusher');
 
-    :root {
-      --bg:       #0b0f18;
-      --panel:    #111826;
-      --border:   #1c2840;
-      --gold:     #c9a84c;
-      --gold-dim: rgba(201,168,76,.15);
-      --text:     #dde6f0;
-      --dim:      #4a6080;
-      --green:    #4ade80;
-      --red:      #f87171;
-    }
+module.exports = async (req, res) => {
+  // CORS 허용
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST만 허용' });
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Noto Sans KR', sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+  const { text } = req.body;
+  if (!text || !text.trim()) {
+    return res.status(400).json({ error: '번역할 텍스트를 입력해주세요' });
+  }
 
-    /* ── 헤더 ── */
-    header {
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      padding: 12px 24px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      flex-shrink: 0;
-    }
+  // ── 환경변수 확인 (누락 시 명확한 오류 메시지)
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('ANTHROPIC_API_KEY 환경변수가 없습니다');
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' });
+  }
+  if (!process.env.PUSHER_APP_ID || !process.env.PUSHER_KEY || !process.env.PUSHER_SECRET) {
+    console.error('Pusher 환경변수가 없습니다');
+    return res.status(500).json({ error: 'Pusher 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' });
+  }
 
-    .logo { display:flex; align-items:center; gap:10px; }
-    .logo-icon {
-      width:34px; height:34px;
-      background: linear-gradient(135deg, var(--gold), #7a5520);
-      border-radius:8px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:17px;
-    }
-    .logo-name  { font-size:14px; font-weight:600; }
-    .logo-sub   { font-size:10px; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; }
-
-    /* 상태 뱃지 */
-    .badge {
-      display:flex; align-items:center; gap:7px;
-      padding:5px 13px;
-      border-radius:20px;
-      font-size:12px;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.03);
-    }
-    .badge-dot { width:7px; height:7px; border-radius:50%; background:#333; }
-    .badge-dot.ok  { background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 2s infinite; }
-    .badge-dot.err { background:var(--red); }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-
-    /* 뷰어 링크 */
-    .viewer-box {
-      margin-left:auto;
-      display:flex; align-items:center; gap:8px;
-      background:var(--gold-dim);
-      border:1px solid rgba(201,168,76,.3);
-      border-radius:8px;
-      padding:6px 14px;
-    }
-    .viewer-box span { font-size:11px; color:var(--dim); }
-    .viewer-url  { font-size:13px; color:var(--gold); font-weight:500; text-decoration:none; }
-    .viewer-url:hover { text-decoration:underline; }
-    .copy-btn {
-      background:var(--gold-dim); border:none; color:var(--gold);
-      padding:4px 10px; border-radius:5px; font-size:11px;
-      cursor:pointer; font-family:inherit;
-      transition:background .2s;
-    }
-    .copy-btn:hover { background:rgba(201,168,76,.3); }
-
-    /* ── 본문 ── */
-    main {
-      flex:1; display:grid; grid-template-columns:1fr 1fr;
-      min-height:0;
-    }
-
-    .panel {
-      display:flex; flex-direction:column;
-      border-right:1px solid var(--border);
-      min-height:0;
-    }
-    .panel:last-child { border-right:none; }
-
-    .panel-top {
-      padding:12px 18px;
-      border-bottom:1px solid var(--border);
-      display:flex; justify-content:space-between; align-items:center;
-      background:rgba(255,255,255,.015);
-      flex-shrink:0;
-    }
-    .panel-label { font-size:10px; color:var(--dim); letter-spacing:.15em; text-transform:uppercase; }
-
-    textarea {
-      flex:1; background:transparent; border:none;
-      color:#b8cce0; font-size:15px; line-height:1.85;
-      padding:20px; resize:none; outline:none;
-      font-family:Georgia, 'Noto Serif KR', serif;
-    }
-    textarea::placeholder { color:#1e2d40; }
-
-    .panel-bot {
-      padding:12px 18px;
-      border-top:1px solid var(--border);
-      display:flex; justify-content:space-between; align-items:center;
-      flex-shrink:0;
-    }
-
-    /* 번역 버튼 */
-    .btn-main {
-      padding:9px 26px; border-radius:8px; border:none;
-      font-family:inherit; font-size:14px; font-weight:600;
-      cursor:pointer; transition:all .2s;
-      background:linear-gradient(135deg, var(--gold), #8a6020);
-      color:#08080f;
-    }
-    .btn-main:disabled { background:#1c2840; color:#2a3a50; cursor:not-allowed; }
-    .btn-main:not(:disabled):hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(201,168,76,.3); }
-
-    .translating { font-size:11px; color:var(--gold); display:none; }
-    .translating.show { display:block; animation:blink 1.2s infinite; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
-
-    /* 결과 패널 */
-    .result-area {
-      flex:1; padding:20px; overflow-y:auto;
-      font-family:'Noto Serif KR', serif;
-    }
-    .result-hint { color:#1c2840; font-size:15px; line-height:1.8; }
-    .result-text { color:#eae0cc; font-size:17px; line-height:2.05; word-break:keep-all; }
-    .sent-label  { font-size:11px; color:var(--green); }
-
-    /* 스몰 버튼 */
-    .btn-sm {
-      padding:5px 13px; border-radius:6px;
-      border:1px solid var(--border); background:transparent;
-      color:var(--dim); font-size:11px; cursor:pointer;
-      font-family:inherit; transition:all .2s;
-    }
-    .btn-sm:hover { border-color:#2c3f58; color:var(--text); }
-
-    /* ── 이력 ── */
-    .history {
-      border-top:1px solid var(--border);
-      background:#090d14;
-      padding:10px 20px;
-      flex-shrink:0;
-      display:none;
-    }
-    .history-lbl { font-size:9px; color:#1c2840; letter-spacing:.15em; text-transform:uppercase; margin-bottom:7px; }
-    .history-row { display:flex; gap:7px; overflow-x:auto; padding-bottom:3px; }
-    .h-item {
-      flex-shrink:0; max-width:200px;
-      background:#0f1520; border:1px solid var(--border);
-      border-radius:6px; padding:6px 11px; cursor:pointer;
-      transition:border-color .2s;
-    }
-    .h-item:hover { border-color:#2c3f58; }
-    .h-time    { font-size:9px;  color:#1c2840; margin-bottom:3px; }
-    .h-preview { font-size:11px; color:#2c3f58; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-    /* 스크롤바 */
-    ::-webkit-scrollbar { width:3px; height:3px; }
-    ::-webkit-scrollbar-thumb { background:#1c2840; border-radius:2px; }
-
-    /* 토스트 */
-    #toast {
-      position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
-      background:#1c2840; border:1px solid #2c3f58; color:var(--text);
-      padding:9px 18px; border-radius:8px; font-size:13px;
-      opacity:0; transition:opacity .3s; pointer-events:none; z-index:9;
-    }
-    #toast.show { opacity:1; }
-  </style>
-</head>
-<body>
-
-<!-- 헤더 -->
-<header>
-  <div class="logo">
-    <div class="logo-icon">✝</div>
-    <div>
-      <div class="logo-name">설교 번역 시스템</div>
-      <div class="logo-sub">방송실 · Broadcast</div>
-    </div>
-  </div>
-
-  <div class="badge">
-    <div id="dot" class="badge-dot"></div>
-    <span id="statusTxt">서버 확인 중...</span>
-  </div>
-
-  <div class="viewer-box">
-    <span>성도 화면:</span>
-    <a id="vUrl" class="viewer-url" href="/viewer" target="_blank">/viewer</a>
-    <button class="copy-btn" onclick="copyUrl()">링크 복사</button>
-  </div>
-</header>
-
-<!-- 본문 -->
-<main>
-  <!-- 왼쪽: 영어 입력 -->
-  <div class="panel">
-    <div class="panel-top">
-      <span class="panel-label">🇺🇸 영어 원문</span>
-      <span id="wc" style="font-size:11px;color:#1c2840;">0 단어</span>
-    </div>
-
-    <textarea id="src"
-      placeholder="영어 설교 내용을 붙여넣으세요...
-
-For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.
-
-💡 Ctrl+Enter 로 빠르게 번역할 수 있습니다."></textarea>
-
-    <div class="panel-bot">
-      <span id="spinning" class="translating">● 번역 중...</span>
-      <button id="tBtn" class="btn-main" onclick="doTranslate()">한국어로 번역 →</button>
-    </div>
-  </div>
-
-  <!-- 오른쪽: 한국어 결과 -->
-  <div class="panel">
-    <div class="panel-top">
-      <span class="panel-label">🇰🇷 한국어 번역</span>
-      <span id="sentLbl" class="sent-label"></span>
-    </div>
-
-    <div id="resultArea" class="result-area">
-      <div id="hint" class="result-hint">
-        번역 완료 즉시 성도 화면에 자동 전송됩니다.
-      </div>
-      <div id="result" class="result-text" style="display:none;"></div>
-    </div>
-
-    <div class="panel-bot">
-      <div style="display:flex;gap:7px;">
-        <button class="btn-sm" onclick="copyKo()">복사</button>
-        <button class="btn-sm" onclick="clearAll()">초기화</button>
-      </div>
-      <span id="lastTime" style="font-size:10px;color:#1c2840;"></span>
-    </div>
-  </div>
-</main>
-
-<!-- 이력 -->
-<div class="history" id="hist">
-  <div class="history-lbl">최근 번역 (클릭하면 다시 전송)</div>
-  <div id="histRow" class="history-row"></div>
-</div>
-
-<div id="toast"></div>
-
-<script>
-  /* ── 설정 ── */
-  const API = '/api/translate';
-  const history = [];
-  let koText = '';
-
-  /* 뷰어 URL */
-  const vUrl = location.origin + '/viewer';
-  document.getElementById('vUrl').href = vUrl;
-  document.getElementById('vUrl').textContent = vUrl;
-
-  /* 단어수 */
-  document.getElementById('src').addEventListener('input', () => {
-    const n = document.getElementById('src').value.split(/\s+/).filter(Boolean).length;
-    document.getElementById('wc').textContent = n + ' 단어';
-  });
-
-  /* 서버 상태 확인 */
-  fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{"text":"ping"}' })
-    .then(r => {
-      document.getElementById('dot').className = 'badge-dot ok';
-      document.getElementById('statusTxt').textContent = '서버 연결됨';
-    })
-    .catch(() => {
-      document.getElementById('dot').className = 'badge-dot err';
-      document.getElementById('statusTxt').textContent = '서버 오류 — 환경변수 확인 필요';
+  try {
+    // ① Claude API로 번역
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: `당신은 영어 설교를 한국어로 번역하는 전문 번역가입니다.
+- 한국 개역개정판 성경 구절 사용
+- 개혁주의 신학 용어 정확히 사용 (칭의, 성화, 은혜, 속죄, 언약 등)
+- 자연스러운 설교 문체 (합쇼체)
+- 번역문만 출력 (설명이나 주석 없이)`,
+        messages: [{ role: 'user', content: `다음 영어 설교를 한국어로 번역해주세요:\n\n${text}` }]
+      })
     });
 
-  /* ── 번역 ── */
-  async function doTranslate() {
-    const text = document.getElementById('src').value.trim();
-    if (!text) { toast('번역할 텍스트를 입력해주세요'); return; }
-
-    const btn = document.getElementById('tBtn');
-    btn.disabled = true;
-    document.getElementById('spinning').classList.add('show');
-    document.getElementById('hint').style.display = 'none';
-    document.getElementById('result').style.display = 'block';
-    document.getElementById('result').textContent = '번역 중...';
-    document.getElementById('sentLbl').textContent = '';
-
-    try {
-      const r = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+    // 오류 시 Anthropic의 실제 오류 메시지를 반환
+    if (!claudeRes.ok) {
+      const errBody = await claudeRes.text();
+      console.error('Claude API 오류 상태코드:', claudeRes.status);
+      console.error('Claude API 오류 내용:', errBody);
+      return res.status(500).json({
+        error: `Claude API 오류 (${claudeRes.status})`,
+        detail: errBody
       });
-      if (!r.ok) throw new Error(await r.text());
-      const d = await r.json();
-      koText = d.korean;
-
-      document.getElementById('result').textContent = koText;
-      document.getElementById('sentLbl').textContent = '✅ 성도 화면 전송 완료';
-      document.getElementById('lastTime').textContent = new Date().toLocaleTimeString('ko-KR');
-
-      addHistory(text, koText);
-      toast('✅ 번역 완료! 성도 화면에 전송됐습니다');
-
-    } catch(e) {
-      document.getElementById('result').textContent = '오류: ' + e.message;
-      toast('❌ 오류가 발생했습니다');
     }
 
-    btn.disabled = false;
-    document.getElementById('spinning').classList.remove('show');
-  }
+    const claudeData = await claudeRes.json();
+    const korean = claudeData.content[0].text;
 
-  /* ── 이력 ── */
-  function addHistory(en, ko) {
-    history.unshift({ en, ko, t: new Date().toLocaleTimeString('ko-KR') });
-    if (history.length > 8) history.pop();
-    const hist = document.getElementById('hist');
-    hist.style.display = 'block';
-    document.getElementById('histRow').innerHTML = history.map((h, i) =>
-      `<div class="h-item" onclick="loadH(${i})">
-        <div class="h-time">${h.t}</div>
-        <div class="h-preview">${h.en.slice(0,55)}...</div>
-      </div>`
-    ).join('');
-  }
+    // ② Pusher로 모든 성도에게 실시간 전송
+    const pusher = new Pusher({
+      appId:   process.env.PUSHER_APP_ID,
+      key:     process.env.PUSHER_KEY,
+      secret:  process.env.PUSHER_SECRET,
+      cluster: process.env.PUSHER_CLUSTER || 'us2',
+      useTLS:  true
+    });
 
-  function loadH(i) {
-    document.getElementById('src').value = history[i].en;
-    document.getElementById('result').textContent = history[i].ko;
-    document.getElementById('result').style.display = 'block';
-    document.getElementById('hint').style.display = 'none';
-    koText = history[i].ko;
-  }
+    await pusher.trigger('sermon', 'translation', {
+      korean,
+      time: new Date().toLocaleTimeString('ko-KR')
+    });
 
-  /* ── 유틸 ── */
-  function copyUrl() { navigator.clipboard.writeText(vUrl); toast('성도 링크 복사됨!'); }
-  function copyKo()  { if (koText) { navigator.clipboard.writeText(koText); toast('번역문 복사됨!'); } }
-  function clearAll() {
-    document.getElementById('src').value = '';
-    document.getElementById('result').style.display = 'none';
-    document.getElementById('hint').style.display = 'block';
-    document.getElementById('sentLbl').textContent = '';
-    document.getElementById('wc').textContent = '0 단어';
-    koText = '';
-  }
+    // ③ 방송실에 결과 반환
+    res.status(200).json({ korean, success: true });
 
-  function toast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3000);
+  } catch (err) {
+    console.error('전체 오류:', err);
+    res.status(500).json({ error: err.message });
   }
-
-  document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') doTranslate();
-  });
-</script>
-</body>
-</html>
+};
