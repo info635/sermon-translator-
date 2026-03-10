@@ -1,86 +1,444 @@
-// api/translate.js
-// ✝ 설교 번역 서버 — Claude로 번역하고 Pusher로 성도에게 전송
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>✝ 설교 번역 — 방송실</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&family=Noto+Serif+KR:wght@400;600&display=swap');
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    :root {
+      --bg:#0b0f18; --panel:#111826; --border:#1c2840;
+      --gold:#c9a84c; --gdim:rgba(201,168,76,.15);
+      --text:#dde6f0; --dim:#4a6080;
+      --green:#4ade80; --red:#f87171;
+    }
+    body { background:var(--bg); color:var(--text); font-family:'Noto Sans KR',sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
-const Pusher = require('pusher');
+    /* 헤더 */
+    header { background:var(--panel); border-bottom:1px solid var(--border); padding:11px 22px; display:flex; align-items:center; gap:16px; flex-shrink:0; }
+    .logo { display:flex; align-items:center; gap:10px; }
+    .logo-icon { width:32px; height:32px; background:linear-gradient(135deg,var(--gold),#7a5520); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+    .logo-name { font-size:14px; font-weight:600; }
+    .logo-sub  { font-size:10px; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; }
+    .badge { display:flex; align-items:center; gap:7px; padding:5px 13px; border-radius:20px; font-size:12px; border:1px solid var(--border); background:rgba(255,255,255,.03); }
+    .badge-dot { width:7px; height:7px; border-radius:50%; background:#333; }
+    .badge-dot.ok  { background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 2s infinite; }
+    .badge-dot.err { background:var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .viewer-box { margin-left:auto; display:flex; align-items:center; gap:8px; background:var(--gdim); border:1px solid rgba(201,168,76,.3); border-radius:8px; padding:6px 14px; }
+    .viewer-box span { font-size:11px; color:var(--dim); }
+    .viewer-url { font-size:13px; color:var(--gold); font-weight:500; text-decoration:none; }
+    .viewer-url:hover { text-decoration:underline; }
+    .copy-btn { background:var(--gdim); border:none; color:var(--gold); padding:4px 10px; border-radius:5px; font-size:11px; cursor:pointer; font-family:inherit; }
 
-module.exports = async (req, res) => {
-  // CORS 허용
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST만 허용' });
-
-  const { text } = req.body;
-  if (!text || !text.trim()) {
-    return res.status(400).json({ error: '번역할 텍스트를 입력해주세요' });
-  }
-
-  // ── 환경변수 확인 (누락 시 명확한 오류 메시지)
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.error('ANTHROPIC_API_KEY 환경변수가 없습니다');
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' });
-  }
-  if (!process.env.PUSHER_APP_ID || !process.env.PUSHER_KEY || !process.env.PUSHER_SECRET) {
-    console.error('Pusher 환경변수가 없습니다');
-    return res.status(500).json({ error: 'Pusher 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' });
-  }
-
-  try {
-    // ① Claude API로 번역
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        system: `당신은 영어 설교를 한국어로 번역하는 전문 번역가입니다.
-- 한국 개역개정판 성경 구절 사용
-- 개혁주의 신학 용어 정확히 사용 (칭의, 성화, 은혜, 속죄, 언약 등)
-- 자연스러운 설교 문체 (합쇼체)
-- 번역문만 출력 (설명이나 주석 없이)`,
-        messages: [{ role: 'user', content: `다음 영어 설교를 한국어로 번역해주세요:\n\n${text}` }]
-      })
-    });
-
-    // 오류 시 Anthropic의 실제 오류 메시지를 반환
-    if (!claudeRes.ok) {
-      const errBody = await claudeRes.text();
-      console.error('Claude API 오류 상태코드:', claudeRes.status);
-      console.error('Claude API 오류 내용:', errBody);
-      return res.status(500).json({
-        error: `Claude API 오류 (${claudeRes.status})`,
-        detail: errBody
-      });
+    /* 마이크 바 */
+    .mic-bar {
+      background:#0d1420; border-bottom:2px solid var(--border);
+      padding:14px 22px; display:flex; align-items:center; gap:14px; flex-shrink:0;
+    }
+    .mic-btn {
+      display:flex; align-items:center; gap:9px;
+      padding:10px 24px; border-radius:10px; border:none;
+      font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
+      background:linear-gradient(135deg,#1a3a1a,#1f4a1f);
+      color:var(--green); border:1px solid #2a5a2a; transition:all .25s;
+      white-space:nowrap;
+    }
+    .mic-btn.on {
+      background:linear-gradient(135deg,#3a0f0f,#5a1a1a);
+      color:var(--red); border-color:#7a2a2a;
+      animation:micGlow 1.5s infinite;
+    }
+    @keyframes micGlow {
+      0%,100%{ box-shadow:0 0 0 0 rgba(248,113,113,.4); }
+      50%    { box-shadow:0 0 0 10px rgba(248,113,113,0); }
     }
 
-    const claudeData = await claudeRes.json();
-    const korean = claudeData.content[0].text;
+    /* 실시간 음성 표시 박스 */
+    .interim-box {
+      flex:1; min-height:42px;
+      background:rgba(255,255,255,.02); border:1px solid var(--border);
+      border-radius:8px; padding:10px 16px;
+      font-size:13px; color:#3a5070; font-style:italic;
+      display:flex; align-items:center; transition:all .3s;
+    }
+    .interim-box.active { color:#7aafdf; border-color:#2a4060; font-style:normal; }
 
-    // ② Pusher로 모든 성도에게 실시간 전송
-    const pusher = new Pusher({
-      appId:   process.env.PUSHER_APP_ID,
-      key:     process.env.PUSHER_KEY,
-      secret:  process.env.PUSHER_SECRET,
-      cluster: process.env.PUSHER_CLUSTER || 'us2',
-      useTLS:  true
-    });
+    /* 자동번역 토글 */
+    .auto-group { display:flex; align-items:center; gap:8px; white-space:nowrap; }
+    .auto-group label { font-size:12px; color:var(--dim); }
+    .toggle { position:relative; width:44px; height:24px; background:#1c2840; border-radius:12px; cursor:pointer; border:1px solid var(--border); transition:background .3s; flex-shrink:0; }
+    .toggle.on { background:rgba(201,168,76,.35); border-color:var(--gold); }
+    .toggle::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#4a6080; transition:all .3s; }
+    .toggle.on::after { left:23px; background:var(--gold); }
 
-    await pusher.trigger('sermon', 'translation', {
-      korean,
-      time: new Date().toLocaleTimeString('ko-KR')
-    });
+    /* 간격 선택 */
+    .gap-group { display:flex; align-items:center; gap:8px; white-space:nowrap; }
+    .gap-group label { font-size:12px; color:var(--dim); }
+    .gap-group select { background:#1c2840; border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:6px; font-size:12px; font-family:inherit; cursor:pointer; outline:none; }
 
-    // ③ 방송실에 결과 반환
-    res.status(200).json({ korean, success: true });
+    /* 본문 */
+    main { flex:1; display:grid; grid-template-columns:1fr 1fr; min-height:0; }
+    .panel { display:flex; flex-direction:column; border-right:1px solid var(--border); min-height:0; }
+    .panel:last-child { border-right:none; }
+    .panel-top { padding:11px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.015); flex-shrink:0; }
+    .panel-label { font-size:10px; color:var(--dim); letter-spacing:.15em; text-transform:uppercase; }
+    textarea { flex:1; background:transparent; border:none; color:#b8cce0; font-size:15px; line-height:1.85; padding:18px; resize:none; outline:none; font-family:Georgia,'Noto Serif KR',serif; }
+    textarea::placeholder { color:#1e2d40; }
+    .panel-bot { padding:11px 18px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+    .btn-main { padding:9px 24px; border-radius:8px; border:none; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; background:linear-gradient(135deg,var(--gold),#8a6020); color:#08080f; }
+    .btn-main:disabled { background:#1c2840; color:#2a3a50; cursor:not-allowed; }
+    .btn-main:not(:disabled):hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(201,168,76,.3); }
+    .translating { font-size:11px; color:var(--gold); display:none; }
+    .translating.show { display:block; animation:blink 1.2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    .result-area { flex:1; padding:18px; overflow-y:auto; font-family:'Noto Serif KR',serif; }
+    .result-hint { color:#1c2840; font-size:15px; line-height:1.8; }
+    .result-text { color:#eae0cc; font-size:17px; line-height:2.05; word-break:keep-all; }
+    .sent-label  { font-size:11px; color:var(--green); }
+    .btn-sm { padding:5px 13px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--dim); font-size:11px; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .btn-sm:hover { border-color:#2c3f58; color:var(--text); }
 
-  } catch (err) {
-    console.error('전체 오류:', err);
-    res.status(500).json({ error: err.message });
+    /* 이력 */
+    .history { border-top:1px solid var(--border); background:#090d14; padding:9px 20px; flex-shrink:0; display:none; }
+    .history-lbl { font-size:9px; color:#1c2840; letter-spacing:.15em; text-transform:uppercase; margin-bottom:6px; }
+    .history-row { display:flex; gap:7px; overflow-x:auto; padding-bottom:3px; }
+    .h-item { flex-shrink:0; max-width:200px; background:#0f1520; border:1px solid var(--border); border-radius:6px; padding:6px 11px; cursor:pointer; }
+    .h-item:hover { border-color:#2c3f58; }
+    .h-time    { font-size:9px;  color:#1c2840; margin-bottom:3px; }
+    .h-preview { font-size:11px; color:#2c3f58; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    ::-webkit-scrollbar { width:3px; height:3px; }
+    ::-webkit-scrollbar-thumb { background:#1c2840; border-radius:2px; }
+    #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1c2840; border:1px solid #2c3f58; color:var(--text); padding:9px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .3s; pointer-events:none; z-index:9; }
+    #toast.show { opacity:1; }
+  </style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">✝</div>
+    <div>
+      <div class="logo-name">설교 번역 시스템</div>
+      <div class="logo-sub">방송실 · Broadcast</div>
+    </div>
+  </div>
+  <div class="badge">
+    <div id="dot" class="badge-dot"></div>
+    <span id="statusTxt">서버 확인 중...</span>
+  </div>
+  <div class="viewer-box">
+    <span>성도 화면:</span>
+    <a id="vUrl" class="viewer-url" href="/viewer" target="_blank">/viewer</a>
+    <button class="copy-btn" onclick="copyUrl()">링크 복사</button>
+  </div>
+</header>
+
+<!-- 마이크 바 -->
+<div class="mic-bar">
+
+  <button id="micBtn" class="mic-btn" onclick="toggleMic()">
+    <span>🎤</span>
+    <span id="micLabel">음성 인식 시작</span>
+  </button>
+
+  <div id="interimBox" class="interim-box">
+    마이크 버튼을 누르면 설교자의 음성을 자동 인식합니다...
+  </div>
+
+  <div class="auto-group">
+    <label>자동 번역</label>
+    <div id="autoToggle" class="toggle on" onclick="toggleAuto()"></div>
+  </div>
+
+  <div class="gap-group">
+    <label>번역 간격</label>
+    <select id="gapSel">
+      <option value="3000">3초</option>
+      <option value="5000" selected>5초</option>
+      <option value="8000">8초</option>
+      <option value="12000">12초</option>
+    </select>
+  </div>
+
+</div>
+
+<!-- 본문 -->
+<main>
+  <!-- 왼쪽: 영어 -->
+  <div class="panel">
+    <div class="panel-top">
+      <span class="panel-label">🎤 영어 원문 (음성 인식 결과)</span>
+      <span id="wc" style="font-size:11px;color:#1c2840;">0 단어</span>
+    </div>
+    <textarea id="src" placeholder="음성 인식된 영어가 여기 자동 입력됩니다.
+직접 붙여넣기도 가능합니다.
+
+💡 Ctrl+Enter = 수동 번역"></textarea>
+    <div class="panel-bot">
+      <span id="spinning" class="translating">● 번역 중...</span>
+      <button id="tBtn" class="btn-main" onclick="doTranslate()">번역 →</button>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 한국어 -->
+  <div class="panel">
+    <div class="panel-top">
+      <span class="panel-label">🇰🇷 한국어 번역</span>
+      <span id="sentLbl" class="sent-label"></span>
+    </div>
+    <div class="result-area">
+      <div id="hint" class="result-hint">번역 완료 즉시 성도 화면에 자동 전송됩니다.</div>
+      <div id="result" class="result-text" style="display:none;"></div>
+    </div>
+    <div class="panel-bot">
+      <div style="display:flex;gap:7px;">
+        <button class="btn-sm" onclick="copyKo()">복사</button>
+        <button class="btn-sm" onclick="clearAll()">초기화</button>
+      </div>
+      <span id="lastTime" style="font-size:10px;color:#1c2840;"></span>
+    </div>
+  </div>
+</main>
+
+<!-- 이력 -->
+<div class="history" id="hist">
+  <div class="history-lbl">최근 번역 이력</div>
+  <div id="histRow" class="history-row"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API = '/api/translate';
+  const histArr = [];
+  let koText = '';
+  let isTranslating = false;
+
+  // 뷰어 URL
+  const vUrl = location.origin + '/viewer';
+  document.getElementById('vUrl').href = vUrl;
+  document.getElementById('vUrl').textContent = vUrl;
+
+  // 단어수
+  document.getElementById('src').addEventListener('input', updateWC);
+  function updateWC() {
+    const n = document.getElementById('src').value.split(/\s+/).filter(Boolean).length;
+    document.getElementById('wc').textContent = n + ' 단어';
   }
-};
+
+  // ──────────────────────────────────────────
+  // 🎤 음성 인식 (Chrome 내장 Web Speech API)
+  // 추가 비용 없음, API 키 불필요
+  // ──────────────────────────────────────────
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition  = null;
+  let isListening  = false;
+  let autoMode     = true;
+  let silenceTimer = null;
+
+  function toggleMic() {
+    if (!SpeechRecognition) {
+      toast('❌ Chrome 브라우저에서만 음성인식이 작동합니다');
+      return;
+    }
+    isListening ? stopMic() : startMic();
+  }
+
+  function startMic() {
+    recognition = new SpeechRecognition();
+    recognition.lang           = 'en-US';   // 영어 설교 인식
+    recognition.continuous     = true;       // 계속 듣기
+    recognition.interimResults = true;       // 말하는 중에도 표시
+
+    // 음성 인식 결과 처리
+    recognition.onresult = (e) => {
+      let interim = '';
+
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+
+        if (e.results[i].isFinal) {
+          // ✅ 문장 완성 → 입력창에 누적
+          const cur = document.getElementById('src').value;
+          document.getElementById('src').value = (cur + ' ' + t).trim();
+          updateWC();
+
+          // 자동 번역 모드: N초 후 자동 번역
+          if (autoMode) {
+            clearTimeout(silenceTimer);
+            const gap = parseInt(document.getElementById('gapSel').value);
+            silenceTimer = setTimeout(() => {
+              const txt = document.getElementById('src').value.trim();
+              if (txt && !isTranslating) doTranslate();
+            }, gap);
+          }
+        } else {
+          // 🔄 인식 중 (회색으로 표시)
+          interim += t;
+        }
+      }
+
+      // 인식 중인 텍스트 실시간 표시
+      const box = document.getElementById('interimBox');
+      if (interim) {
+        box.textContent = '🎤 ' + interim;
+        box.classList.add('active');
+      } else {
+        box.textContent = '✅ 인식 중... (문장 완성되면 자동 번역)';
+        box.classList.remove('active');
+      }
+    };
+
+    // 마이크 권한 거부 처리
+    recognition.onerror = (e) => {
+      if (e.error === 'not-allowed') {
+        toast('❌ 마이크 권한을 허용해주세요 — 주소창 왼쪽 자물쇠 🔒 아이콘 클릭');
+        stopMic();
+      } else if (e.error === 'no-speech') {
+        // 무음 — 정상, 무시
+      }
+    };
+
+    // 인식 중단되면 자동 재시작 (continuous 보완)
+    recognition.onend = () => {
+      if (isListening) {
+        setTimeout(() => { try { recognition.start(); } catch(e){} }, 200);
+      }
+    };
+
+    try {
+      recognition.start();
+      isListening = true;
+      document.getElementById('micBtn').classList.add('on');
+      document.getElementById('micLabel').textContent = '음성 인식 중 — 클릭하면 정지';
+      document.getElementById('interimBox').textContent = '🎤 마이크 준비됨 — 설교자가 말하면 자동 인식됩니다';
+      document.getElementById('interimBox').classList.add('active');
+      toast('🎤 음성 인식 시작됐습니다');
+    } catch(e) {
+      toast('마이크 오류: ' + e.message);
+    }
+  }
+
+  function stopMic() {
+    isListening = false;
+    clearTimeout(silenceTimer);
+    if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
+    document.getElementById('micBtn').classList.remove('on');
+    document.getElementById('micLabel').textContent = '음성 인식 시작';
+    document.getElementById('interimBox').textContent = '음성 인식이 중지됐습니다.';
+    document.getElementById('interimBox').classList.remove('active');
+    toast('⏹ 음성 인식 중지됨');
+  }
+
+  function toggleAuto() {
+    autoMode = !autoMode;
+    document.getElementById('autoToggle').classList.toggle('on', autoMode);
+    toast(autoMode ? '✅ 자동 번역 켜짐' : '🔕 자동 번역 꺼짐 — 버튼으로 수동 번역');
+  }
+
+  // ──────────────────────────────────────────
+  // 번역 실행
+  // ──────────────────────────────────────────
+  async function doTranslate() {
+    const text = document.getElementById('src').value.trim();
+    if (!text) { toast('번역할 텍스트가 없습니다'); return; }
+    if (isTranslating) return;
+
+    isTranslating = true;
+    document.getElementById('tBtn').disabled = true;
+    document.getElementById('spinning').classList.add('show');
+    document.getElementById('hint').style.display = 'none';
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('result').textContent = '번역 중...';
+    document.getElementById('sentLbl').textContent = '';
+
+    // 입력창 비우기 (다음 문장 준비)
+    const textToSend = text;
+    document.getElementById('src').value = '';
+    updateWC();
+
+    try {
+      const r = await fetch(API, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text: textToSend })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '서버 오류');
+
+      koText = d.korean;
+      document.getElementById('result').textContent = koText;
+      document.getElementById('sentLbl').textContent = '✅ 성도 화면 전송 완료';
+      document.getElementById('lastTime').textContent = new Date().toLocaleTimeString('ko-KR');
+      addHistory(textToSend, koText);
+      toast('✅ 번역 완료 — 성도 화면에 전송됐습니다');
+
+    } catch(e) {
+      // 실패 시 텍스트 복원
+      document.getElementById('src').value = textToSend;
+      updateWC();
+      document.getElementById('result').textContent = '오류: ' + e.message;
+      toast('❌ ' + e.message);
+    }
+
+    isTranslating = false;
+    document.getElementById('tBtn').disabled = false;
+    document.getElementById('spinning').classList.remove('show');
+  }
+
+  // 이력
+  function addHistory(en, ko) {
+    histArr.unshift({ en, ko, t: new Date().toLocaleTimeString('ko-KR') });
+    if (histArr.length > 8) histArr.pop();
+    document.getElementById('hist').style.display = 'block';
+    document.getElementById('histRow').innerHTML = histArr.map((h,i) =>
+      `<div class="h-item" onclick="loadH(${i})">
+        <div class="h-time">${h.t}</div>
+        <div class="h-preview">${h.en.slice(0,50)}...</div>
+      </div>`
+    ).join('');
+  }
+  function loadH(i) {
+    document.getElementById('src').value = histArr[i].en;
+    document.getElementById('result').textContent = histArr[i].ko;
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('hint').style.display = 'none';
+    koText = histArr[i].ko; updateWC();
+  }
+
+  // 서버 상태
+  fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{"text":"ping"}' })
+    .then(() => {
+      document.getElementById('dot').className = 'badge-dot ok';
+      document.getElementById('statusTxt').textContent = '서버 연결됨';
+    })
+    .catch(() => {
+      document.getElementById('dot').className = 'badge-dot err';
+      document.getElementById('statusTxt').textContent = '서버 오류';
+    });
+
+  function copyUrl() { navigator.clipboard.writeText(vUrl); toast('성도 링크 복사됨!'); }
+  function copyKo()  { if (koText) { navigator.clipboard.writeText(koText); toast('번역문 복사됨!'); } }
+  function clearAll() {
+    stopMic();
+    document.getElementById('src').value = '';
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('hint').style.display = 'block';
+    document.getElementById('sentLbl').textContent = '';
+    updateWC(); koText = '';
+  }
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') doTranslate();
+  });
+</script>
+</body>
+</html>
