@@ -4,9 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>✝ 설교 번역 — 방송실</title>
-  <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <!-- Mammoth.js (DOCX) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&family=Noto+Serif+KR:wght@400;600&display=swap');
@@ -16,6 +14,7 @@
       --gold:#c9a84c; --gdim:rgba(201,168,76,.15);
       --text:#dde6f0; --dim:#4a6080;
       --green:#4ade80; --red:#f87171; --blue:#60a5fa;
+      --purple:#a78bfa;
     }
     body { background:var(--bg); color:var(--text); font-family:'Noto Sans KR',sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
@@ -36,12 +35,53 @@
     .viewer-url:hover { text-decoration:underline; }
     .copy-btn { background:var(--gdim); border:none; color:var(--gold); padding:4px 10px; border-radius:5px; font-size:11px; cursor:pointer; font-family:inherit; }
 
+    /* ── 번역 방향 바 ── */
+    .dir-bar {
+      background:#090d18; border-bottom:2px solid var(--border);
+      padding:10px 22px; display:flex; align-items:center; gap:12px; flex-shrink:0;
+    }
+    .dir-label { font-size:11px; color:var(--dim); white-space:nowrap; }
+
+    /* 방향 버튼 그룹 */
+    .dir-btns { display:flex; gap:6px; }
+    .dir-btn {
+      padding:7px 16px; border-radius:8px; border:1px solid var(--border);
+      background:transparent; color:var(--dim);
+      font-size:12px; font-weight:600; cursor:pointer;
+      font-family:inherit; transition:all .2s; white-space:nowrap;
+    }
+    .dir-btn.active-auto   { background:rgba(201,168,76,.15); border-color:var(--gold);   color:var(--gold);   }
+    .dir-btn.active-en-ko  { background:rgba(96,165,250,.12); border-color:var(--blue);   color:var(--blue);   }
+    .dir-btn.active-ko-en  { background:rgba(167,139,250,.12); border-color:var(--purple); color:var(--purple); }
+    .dir-btn:hover:not(.active-auto):not(.active-en-ko):not(.active-ko-en) { border-color:#2c3f58; color:var(--text); }
+
+    /* 현재 방향 표시 */
+    .dir-indicator {
+      display:flex; align-items:center; gap:8px;
+      padding:6px 14px; border-radius:8px;
+      border:1px solid var(--border); background:rgba(255,255,255,.02);
+      font-size:13px; font-weight:600;
+    }
+    .dir-arrow { font-size:16px; }
+
+    /* 참고자료 바 */
+    .ref-bar { background:#0a1020; border-bottom:1px solid var(--border); padding:9px 22px; display:flex; align-items:center; gap:12px; flex-shrink:0; }
+    .ref-upload-btn { display:flex; align-items:center; gap:8px; padding:7px 16px; border-radius:9px; border:none; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#0f1f3a,#162a4a); color:var(--blue); border:1px solid #1e3a5a; white-space:nowrap; transition:all .2s; }
+    .ref-upload-btn:hover { border-color:#2a5a8a; }
+    .ref-status { flex:1; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:8px; padding:6px 14px; font-size:12px; color:#3a5070; min-height:34px; }
+    .ref-status.loaded { border-color:#1e3a5a; color:var(--blue); }
+    .ref-status.loaded .ref-dot { background:var(--blue); box-shadow:0 0 6px var(--blue); }
+    .ref-dot { width:6px; height:6px; border-radius:50%; background:#2a3a50; flex-shrink:0; }
+    .ref-clear { background:transparent; border:1px solid var(--border); color:#3a5070; padding:4px 11px; border-radius:6px; font-size:11px; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .ref-clear:hover { border-color:var(--red); color:var(--red); }
+    #fileInput { display:none; }
+
     /* 마이크 바 */
-    .mic-bar { background:#0d1420; border-bottom:1px solid var(--border); padding:12px 22px; display:flex; align-items:center; gap:14px; flex-shrink:0; }
+    .mic-bar { background:#0d1420; border-bottom:1px solid var(--border); padding:11px 22px; display:flex; align-items:center; gap:14px; flex-shrink:0; }
     .mic-btn { display:flex; align-items:center; gap:9px; padding:9px 22px; border-radius:10px; border:none; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#1a3a1a,#1f4a1f); color:var(--green); border:1px solid #2a5a2a; transition:all .25s; white-space:nowrap; }
     .mic-btn.on { background:linear-gradient(135deg,#3a0f0f,#5a1a1a); color:var(--red); border-color:#7a2a2a; animation:micGlow 1.5s infinite; }
-    @keyframes micGlow { 0%,100%{ box-shadow:0 0 0 0 rgba(248,113,113,.4); } 50%{ box-shadow:0 0 0 10px rgba(248,113,113,0); } }
-    .interim-box { flex:1; min-height:40px; background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:8px; padding:9px 14px; font-size:13px; color:#3a5070; font-style:italic; display:flex; align-items:center; }
+    @keyframes micGlow { 0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)} 50%{box-shadow:0 0 0 10px rgba(248,113,113,0)} }
+    .interim-box { flex:1; min-height:38px; background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:13px; color:#3a5070; font-style:italic; display:flex; align-items:center; }
     .interim-box.active { color:#7aafdf; border-color:#2a4060; font-style:normal; }
     .auto-group { display:flex; align-items:center; gap:8px; white-space:nowrap; }
     .auto-group label { font-size:12px; color:var(--dim); }
@@ -52,33 +92,6 @@
     .gap-group { display:flex; align-items:center; gap:8px; white-space:nowrap; }
     .gap-group label { font-size:12px; color:var(--dim); }
     .gap-group select { background:#1c2840; border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:6px; font-size:12px; font-family:inherit; cursor:pointer; outline:none; }
-
-    /* 참고자료 바 */
-    .ref-bar {
-      background:#0a1020; border-bottom:2px solid var(--border);
-      padding:10px 22px; display:flex; align-items:center; gap:12px; flex-shrink:0;
-    }
-    .ref-upload-btn {
-      display:flex; align-items:center; gap:8px;
-      padding:8px 18px; border-radius:9px; border:none;
-      font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
-      background:linear-gradient(135deg,#0f1f3a,#162a4a);
-      color:var(--blue); border:1px solid #1e3a5a;
-      white-space:nowrap; transition:all .2s;
-    }
-    .ref-upload-btn:hover { border-color:#2a5a8a; }
-    .ref-status {
-      flex:1; display:flex; align-items:center; gap:10px;
-      background:rgba(255,255,255,.02); border:1px solid var(--border);
-      border-radius:8px; padding:7px 14px; font-size:12px; color:#3a5070; min-height:36px;
-    }
-    .ref-status.loaded { border-color:#1e3a5a; color:var(--blue); }
-    .ref-status.loaded .ref-dot { background:var(--blue); box-shadow:0 0 6px var(--blue); }
-    .ref-dot { width:6px; height:6px; border-radius:50%; background:#2a3a50; flex-shrink:0; }
-    .ref-clear { background:transparent; border:1px solid var(--border); color:#3a5070; padding:5px 12px; border-radius:6px; font-size:11px; cursor:pointer; font-family:inherit; transition:all .2s; }
-    .ref-clear:hover { border-color:var(--red); color:var(--red); }
-    /* 파일 입력 숨기기 */
-    #fileInput { display:none; }
 
     /* 본문 */
     main { flex:1; display:grid; grid-template-columns:1fr 1fr; min-height:0; }
@@ -111,26 +124,17 @@
     .h-time    { font-size:9px; color:#1c2840; margin-bottom:3px; }
     .h-preview { font-size:11px; color:#2c3f58; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-    /* 참고자료 미리보기 모달 */
-    .modal-bg {
-      position:fixed; inset:0; background:rgba(0,0,0,.7);
-      display:none; align-items:center; justify-content:center; z-index:50;
-      backdrop-filter:blur(4px);
-    }
+    /* 모달 */
+    .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; z-index:50; backdrop-filter:blur(4px); }
     .modal-bg.show { display:flex; }
-    .modal {
-      background:#0f1826; border:1px solid var(--border);
-      border-radius:14px; width:640px; max-height:80vh;
-      display:flex; flex-direction:column; overflow:hidden;
-    }
+    .modal { background:#0f1826; border:1px solid var(--border); border-radius:14px; width:640px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden; }
     .modal-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
     .modal-title { font-size:14px; font-weight:600; color:var(--blue); }
-    .modal-close { background:transparent; border:none; color:var(--dim); font-size:20px; cursor:pointer; line-height:1; }
+    .modal-close { background:transparent; border:none; color:var(--dim); font-size:20px; cursor:pointer; }
     .modal-body { flex:1; overflow-y:auto; padding:18px 20px; }
     .modal-txt { font-size:13px; color:#7090b0; line-height:1.85; white-space:pre-wrap; word-break:break-word; }
     .modal-foot { padding:12px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
-    .btn-blue { padding:8px 20px; border-radius:8px; border:none; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#1a4a8a,#1e5a9a); color:#90c8ff; transition:all .2s; }
-    .btn-blue:hover { transform:translateY(-1px); }
+    .btn-blue { padding:8px 20px; border-radius:8px; border:none; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#1a4a8a,#1e5a9a); color:#90c8ff; }
 
     ::-webkit-scrollbar { width:3px; height:3px; }
     ::-webkit-scrollbar-thumb { background:#1c2840; border-radius:2px; }
@@ -160,19 +164,30 @@
   </div>
 </header>
 
-<!-- 참고자료 업로드 바 -->
+<!-- 번역 방향 바 -->
+<div class="dir-bar">
+  <span class="dir-label">번역 방향</span>
+  <div class="dir-btns">
+    <button class="dir-btn active-auto" id="btn-auto"  onclick="setDir('auto')">🔄 자동 감지</button>
+    <button class="dir-btn" id="btn-en-ko" onclick="setDir('en-ko')">🇺🇸 영어 → 🇰🇷 한국어</button>
+    <button class="dir-btn" id="btn-ko-en" onclick="setDir('ko-en')">🇰🇷 한국어 → 🇺🇸 영어</button>
+  </div>
+  <div class="dir-indicator" id="dirIndicator">
+    <span class="dir-arrow">🔄</span>
+    <span id="dirLabel">자동 감지 — 언어를 자동으로 판별합니다</span>
+  </div>
+</div>
+
+<!-- 참고자료 바 -->
 <div class="ref-bar">
   <button class="ref-upload-btn" onclick="document.getElementById('fileInput').click()">
-    <span>📎</span>
-    <span>참고자료 업로드</span>
+    <span>📎</span><span>참고자료 업로드</span>
   </button>
   <input type="file" id="fileInput" accept=".pdf,.docx,.txt" onchange="handleFile(event)"/>
-
   <div id="refStatus" class="ref-status">
     <div class="ref-dot"></div>
     <span id="refStatusTxt">PDF · DOCX · TXT 파일을 업로드하면 번역 품질이 향상됩니다</span>
   </div>
-
   <button id="refPreviewBtn" class="btn-sm" style="display:none;" onclick="showModal()">미리보기</button>
   <button id="refClearBtn" class="ref-clear" style="display:none;" onclick="clearRef()">✕ 삭제</button>
 </div>
@@ -180,12 +195,9 @@
 <!-- 마이크 바 -->
 <div class="mic-bar">
   <button id="micBtn" class="mic-btn" onclick="toggleMic()">
-    <span>🎤</span>
-    <span id="micLabel">음성 인식 시작</span>
+    <span>🎤</span><span id="micLabel">음성 인식 시작</span>
   </button>
-  <div id="interimBox" class="interim-box">
-    마이크 버튼을 누르면 설교자의 음성을 자동 인식합니다...
-  </div>
+  <div id="interimBox" class="interim-box">마이크 버튼을 누르면 설교자의 음성을 자동 인식합니다...</div>
   <div class="auto-group">
     <label>자동 번역</label>
     <div id="autoToggle" class="toggle on" onclick="toggleAuto()"></div>
@@ -194,7 +206,7 @@
     <label>번역 간격</label>
     <select id="gapSel">
       <option value="5000">5초</option>
-      <option value="10000" selected>10초 ⭐ 추천</option>
+      <option value="10000" selected>10초 ⭐</option>
       <option value="15000">15초</option>
       <option value="30000">30초</option>
     </select>
@@ -203,12 +215,13 @@
 
 <!-- 본문 -->
 <main>
+  <!-- 왼쪽: 원문 -->
   <div class="panel">
     <div class="panel-top">
-      <span class="panel-label">🎤 영어 원문 (음성 인식 결과)</span>
+      <span class="panel-label" id="srcLabel">🎤 원문 입력</span>
       <span id="wc" style="font-size:11px;color:#1c2840;">0 단어</span>
     </div>
-    <textarea id="src" placeholder="음성 인식된 영어가 여기 자동 입력됩니다.
+    <textarea id="src" placeholder="음성 인식된 텍스트가 자동 입력됩니다.
 직접 붙여넣기도 가능합니다.
 
 💡 Ctrl+Enter = 수동 번역"></textarea>
@@ -218,9 +231,10 @@
     </div>
   </div>
 
+  <!-- 오른쪽: 번역 결과 -->
   <div class="panel">
     <div class="panel-top">
-      <span class="panel-label">🇰🇷 한국어 번역</span>
+      <span class="panel-label" id="resultLabel">번역 결과</span>
       <span id="sentLbl" class="sent-label"></span>
     </div>
     <div class="result-area">
@@ -243,16 +257,14 @@
   <div id="histRow" class="history-row"></div>
 </div>
 
-<!-- 참고자료 미리보기 모달 -->
+<!-- 참고자료 모달 -->
 <div class="modal-bg" id="modalBg" onclick="hideModal(event)">
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title">📎 참고자료 내용</span>
       <button class="modal-close" onclick="hideModal()">×</button>
     </div>
-    <div class="modal-body">
-      <div id="modalTxt" class="modal-txt"></div>
-    </div>
+    <div class="modal-body"><div id="modalTxt" class="modal-txt"></div></div>
     <div class="modal-foot">
       <button class="btn-sm" onclick="hideModal()">닫기</button>
       <button class="btn-blue" onclick="hideModal()">✅ 확인 — 번역에 적용됨</button>
@@ -263,7 +275,6 @@
 <div id="toast"></div>
 
 <script>
-  // PDF.js 워커 설정
   if (typeof pdfjsLib !== 'undefined') {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -271,10 +282,9 @@
 
   const API = '/api/translate';
   const histArr = [];
-  let koText = '';
-  let isTranslating = false;
-  let refText = '';      // 참고자료 텍스트
-  let refFileName = '';  // 업로드된 파일명
+  let koText = '', isTranslating = false;
+  let refText = '', refFileName = '';
+  let currentDir = 'auto'; // 'auto' | 'en-ko' | 'ko-en'
 
   // 뷰어 URL
   const vUrl = location.origin + '/viewer';
@@ -288,52 +298,73 @@
     document.getElementById('wc').textContent = n + ' 단어';
   }
 
-  // ────────────────────────────────────────
-  // 📎 참고자료 파일 처리
-  // ────────────────────────────────────────
+  // ── 번역 방향 설정 ──
+  const DIR_CONFIG = {
+    'auto':  {
+      micLang: 'en-US', // 기본 음성인식 언어
+      srcLabel: '🎤 원문 입력 (자동 감지)',
+      resultLabel: '번역 결과 (자동)',
+      indicator: '🔄 자동 감지 — 언어를 자동으로 판별합니다',
+      indicatorIcon: '🔄',
+    },
+    'en-ko': {
+      micLang: 'en-US',
+      srcLabel: '🇺🇸 영어 원문',
+      resultLabel: '🇰🇷 한국어 번역',
+      indicator: '🇺🇸 영어 → 🇰🇷 한국어',
+      indicatorIcon: '→',
+    },
+    'ko-en': {
+      micLang: 'ko-KR',
+      srcLabel: '🇰🇷 한국어 원문',
+      resultLabel: '🇺🇸 English Translation',
+      indicator: '🇰🇷 한국어 → 🇺🇸 English',
+      indicatorIcon: '→',
+    },
+  };
+
+  function setDir(dir) {
+    currentDir = dir;
+    const cfg = DIR_CONFIG[dir];
+
+    // 버튼 스타일 업데이트
+    document.getElementById('btn-auto').className  = 'dir-btn' + (dir==='auto'  ? ' active-auto'  : '');
+    document.getElementById('btn-en-ko').className = 'dir-btn' + (dir==='en-ko' ? ' active-en-ko' : '');
+    document.getElementById('btn-ko-en').className = 'dir-btn' + (dir==='ko-en' ? ' active-ko-en' : '');
+
+    // 라벨 업데이트
+    document.getElementById('srcLabel').textContent    = cfg.srcLabel;
+    document.getElementById('resultLabel').textContent = cfg.resultLabel;
+    document.getElementById('dirLabel').textContent    = cfg.indicator;
+
+    // 마이크가 켜져 있으면 재시작 (언어 변경)
+    if (isListening) { stopMic(); setTimeout(startMic, 300); }
+
+    toast(`번역 방향: ${cfg.indicator}`);
+  }
+
+  // ── 참고자료 ──
   async function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     refFileName = file.name;
     const ext = file.name.split('.').pop().toLowerCase();
-
     setRefStatus('loading', `⏳ ${file.name} 읽는 중...`);
-
     try {
-      if (ext === 'txt') {
-        refText = await file.text();
-      } else if (ext === 'pdf') {
-        refText = await extractPDF(file);
-      } else if (ext === 'docx') {
-        refText = await extractDOCX(file);
-      } else {
-        toast('❌ PDF, DOCX, TXT 파일만 지원합니다');
-        return;
-      }
-
-      // 너무 길면 앞부분만 사용 (Claude 컨텍스트 절약)
-      const MAX_CHARS = 8000;
-      if (refText.length > MAX_CHARS) {
-        refText = refText.slice(0, MAX_CHARS) + '\n\n[... 이하 생략 ...]';
-      }
-
-      setRefStatus('loaded', `✅ ${file.name} (${Math.round(refText.length / 100) / 10}KB 로드됨)`);
+      if (ext === 'txt')       refText = await file.text();
+      else if (ext === 'pdf')  refText = await extractPDF(file);
+      else if (ext === 'docx') refText = await extractDOCX(file);
+      else { toast('❌ PDF, DOCX, TXT만 지원합니다'); return; }
+      if (refText.length > 8000) refText = refText.slice(0, 8000) + '\n\n[... 이하 생략 ...]';
+      setRefStatus('loaded', `✅ ${file.name} (${Math.round(refText.length/100)/10}KB 로드됨)`);
       document.getElementById('refPreviewBtn').style.display = 'block';
       document.getElementById('refClearBtn').style.display = 'block';
       document.getElementById('modalTxt').textContent = refText;
-      toast(`✅ 참고자료 로드됨 — 이제 번역 시 자동으로 참고합니다`);
-
-    } catch(err) {
-      setRefStatus('', '❌ 파일 읽기 오류: ' + err.message);
-      toast('❌ 파일을 읽을 수 없습니다');
-    }
-
-    // 파일 입력 초기화 (같은 파일 재업로드 허용)
+      toast('✅ 참고자료 로드됨 — 번역 시 자동 반영됩니다');
+    } catch(err) { setRefStatus('', '❌ 오류: ' + err.message); }
     e.target.value = '';
   }
 
-  // PDF 텍스트 추출
   async function extractPDF(file) {
     const ab = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
@@ -346,7 +377,6 @@
     return text.trim();
   }
 
-  // DOCX 텍스트 추출
   async function extractDOCX(file) {
     const ab = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer: ab });
@@ -354,46 +384,37 @@
   }
 
   function setRefStatus(state, msg) {
-    const el = document.getElementById('refStatus');
-    const txt = document.getElementById('refStatusTxt');
-    el.className = 'ref-status' + (state === 'loaded' ? ' loaded' : '');
-    txt.textContent = msg;
+    document.getElementById('refStatus').className = 'ref-status' + (state==='loaded' ? ' loaded' : '');
+    document.getElementById('refStatusTxt').textContent = msg;
   }
 
   function clearRef() {
-    refText = '';
-    refFileName = '';
+    refText = ''; refFileName = '';
     setRefStatus('', 'PDF · DOCX · TXT 파일을 업로드하면 번역 품질이 향상됩니다');
     document.getElementById('refPreviewBtn').style.display = 'none';
     document.getElementById('refClearBtn').style.display = 'none';
-    document.getElementById('modalTxt').textContent = '';
     toast('참고자료가 삭제됐습니다');
   }
 
   function showModal() { document.getElementById('modalBg').classList.add('show'); }
   function hideModal(e) {
-    if (!e || e.target === document.getElementById('modalBg') || !e.target) {
+    if (!e || e.target === document.getElementById('modalBg') || !e.target)
       document.getElementById('modalBg').classList.remove('show');
-    }
   }
 
-  // ────────────────────────────────────────
-  // 🎤 음성 인식
-  // ────────────────────────────────────────
+  // ── 음성 인식 ──
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null;
-  let isListening = false;
-  let autoMode = true;
-  let silenceTimer = null;
+  let recognition = null, isListening = false, autoMode = true, silenceTimer = null;
 
   function toggleMic() {
-    if (!SpeechRecognition) { toast('❌ Chrome 브라우저에서만 음성인식이 작동합니다'); return; }
+    if (!SpeechRecognition) { toast('❌ Chrome에서만 작동합니다'); return; }
     isListening ? stopMic() : startMic();
   }
 
   function startMic() {
     recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
+    // 방향에 따라 음성인식 언어 자동 설정
+    recognition.lang = DIR_CONFIG[currentDir].micLang;
     recognition.continuous = true;
     recognition.interimResults = true;
 
@@ -409,8 +430,7 @@
             clearTimeout(silenceTimer);
             const gap = parseInt(document.getElementById('gapSel').value);
             silenceTimer = setTimeout(() => {
-              const txt = document.getElementById('src').value.trim();
-              if (txt && !isTranslating) doTranslate();
+              if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
             }, gap);
           }
         } else { interim += t; }
@@ -439,8 +459,7 @@
   }
 
   function stopMic() {
-    isListening = false;
-    clearTimeout(silenceTimer);
+    isListening = false; clearTimeout(silenceTimer);
     if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
     document.getElementById('micBtn').classList.remove('on');
     document.getElementById('micLabel').textContent = '음성 인식 시작';
@@ -454,9 +473,7 @@
     toast(autoMode ? '✅ 자동 번역 켜짐' : '🔕 자동 번역 꺼짐');
   }
 
-  // ────────────────────────────────────────
-  // 번역 실행
-  // ────────────────────────────────────────
+  // ── 번역 실행 ──
   async function doTranslate() {
     const text = document.getElementById('src').value.trim();
     if (!text) { toast('번역할 텍스트가 없습니다'); return; }
@@ -478,26 +495,24 @@
       const r = await fetch(API, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          text: textToSend,
-          refText: refText || null   // ← 참고자료 함께 전송
-        })
+        body: JSON.stringify({ text: textToSend, refText: refText || null, direction: currentDir })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '서버 오류');
 
-      koText = d.korean;
+      koText = d.translated;
       document.getElementById('result').textContent = koText;
-      document.getElementById('sentLbl').textContent = refText
-        ? '✅ 참고자료 반영 · 성도 화면 전송 완료'
-        : '✅ 성도 화면 전송 완료';
+
+      // 실제 번역 방향 표시
+      const dirEmoji = d.direction === 'ko-en' ? '🇰🇷→🇺🇸' : '🇺🇸→🇰🇷';
+      document.getElementById('sentLbl').textContent =
+        `✅ ${dirEmoji} 번역 완료 · 성도 화면 전송됨`;
       document.getElementById('lastTime').textContent = new Date().toLocaleTimeString('ko-KR');
-      addHistory(textToSend, koText);
+      addHistory(textToSend, koText, d.direction);
       toast('✅ 번역 완료 — 성도 화면에 전송됐습니다');
 
     } catch(e) {
-      document.getElementById('src').value = textToSend;
-      updateWC();
+      document.getElementById('src').value = textToSend; updateWC();
       document.getElementById('result').textContent = '오류: ' + e.message;
       toast('❌ ' + e.message);
     }
@@ -507,24 +522,25 @@
     document.getElementById('spinning').classList.remove('show');
   }
 
-  // 이력
-  function addHistory(en, ko) {
-    histArr.unshift({ en, ko, t: new Date().toLocaleTimeString('ko-KR') });
+  function addHistory(src, translated, dir) {
+    const dirEmoji = dir === 'ko-en' ? '🇰🇷→🇺🇸' : '🇺🇸→🇰🇷';
+    histArr.unshift({ src, translated, dir, t: new Date().toLocaleTimeString('ko-KR') });
     if (histArr.length > 8) histArr.pop();
     document.getElementById('hist').style.display = 'block';
     document.getElementById('histRow').innerHTML = histArr.map((h,i) =>
       `<div class="h-item" onclick="loadH(${i})">
-        <div class="h-time">${h.t}</div>
-        <div class="h-preview">${h.en.slice(0,50)}...</div>
+        <div class="h-time">${h.t} ${h.dir==='ko-en'?'🇰🇷→🇺🇸':'🇺🇸→🇰🇷'}</div>
+        <div class="h-preview">${h.src.slice(0,45)}...</div>
       </div>`
     ).join('');
   }
+
   function loadH(i) {
-    document.getElementById('src').value = histArr[i].en;
-    document.getElementById('result').textContent = histArr[i].ko;
+    document.getElementById('src').value = histArr[i].src;
+    document.getElementById('result').textContent = histArr[i].translated;
     document.getElementById('result').style.display = 'block';
     document.getElementById('hint').style.display = 'none';
-    koText = histArr[i].ko; updateWC();
+    koText = histArr[i].translated; updateWC();
   }
 
   // 서버 상태
