@@ -8,14 +8,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&family=Noto+Serif+KR:wght@400;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&display=swap');
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
     :root {
       --bg:#0b0f18; --panel:#111826; --border:#1c2840;
       --gold:#c9a84c; --gdim:rgba(201,168,76,.15);
       --text:#dde6f0; --dim:#4a6080;
       --green:#4ade80; --red:#f87171; --blue:#60a5fa;
-      --purple:#a78bfa;
     }
     body { background:var(--bg); color:var(--text); font-family:'Noto Sans KR',sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
@@ -32,54 +31,69 @@
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
     .viewer-box { margin-left:auto; display:flex; align-items:center; gap:8px; background:var(--gdim); border:1px solid rgba(201,168,76,.3); border-radius:8px; padding:6px 14px; }
     .viewer-box span { font-size:11px; color:var(--dim); }
-    .viewer-url { font-size:13px; color:var(--gold); font-weight:500; text-decoration:none; }
-    .viewer-url:hover { text-decoration:underline; }
     .copy-btn { background:var(--gdim); border:none; color:var(--gold); padding:4px 10px; border-radius:5px; font-size:11px; cursor:pointer; font-family:inherit; }
 
-    /* ── 번역 방향 바 ── */
-    .dir-bar {
+    /* ── 언어 선택 바 ── */
+    .lang-bar {
       background:#090d18; border-bottom:2px solid var(--border);
-      padding:10px 22px; display:flex; flex-direction:column; gap:8px; flex-shrink:0;
+      padding:12px 22px; flex-shrink:0;
     }
-    .dir-bar-top { display:flex; align-items:center; gap:10px; }
-    .dir-label { font-size:11px; color:var(--dim); white-space:nowrap; }
-
-    /* 방향 버튼 그룹 — 2줄 고정 */
-    .dir-btns { display:flex; flex-direction:column; gap:6px; }
-    .dir-row   { display:flex; gap:6px; }
-    .dir-row .dir-btn { flex:1; text-align:center; }
-    .dir-btn {
-      padding:6px 13px; border-radius:8px; border:1px solid var(--border);
-      background:transparent; color:var(--dim);
-      font-size:12px; font-weight:600; cursor:pointer;
-      font-family:inherit; transition:all .2s; white-space:nowrap;
+    .lang-bar-title {
+      font-size:10px; color:var(--dim); letter-spacing:.15em; text-transform:uppercase;
+      margin-bottom:10px;
     }
-    .dir-btn.active-auto   { background:rgba(201,168,76,.15); border-color:var(--gold);    color:var(--gold);   }
-    .dir-btn.active-en-ko  { background:rgba(96,165,250,.12); border-color:var(--blue);    color:var(--blue);   }
-    .dir-btn.active-ko-en  { background:rgba(167,139,250,.12); border-color:var(--purple); color:var(--purple); }
-    .dir-btn.active-en-tl  { background:rgba(52,211,153,.12);  border-color:#34d399;       color:#34d399; }
-    .dir-btn.active-en-es  { background:rgba(251,146,60,.12);  border-color:#fb923c;       color:#fb923c; }
-    .dir-btn.active-en-zh  { background:rgba(248,113,113,.12); border-color:#f87171;       color:#f87171; }
-    .dir-btn:hover { border-color:#2c3f58; color:var(--text); }
-
-    /* 현재 방향 표시 */
-    .dir-indicator {
-      display:flex; align-items:center; gap:8px;
-      padding:5px 12px; border-radius:8px;
+    .lang-grid {
+      display:grid; grid-template-columns:repeat(5, 1fr); gap:8px;
+    }
+    .lang-card {
+      display:flex; flex-direction:column; align-items:center; gap:5px;
+      padding:10px 8px; border-radius:10px;
       border:1px solid var(--border); background:rgba(255,255,255,.02);
-      font-size:12px; font-weight:600; white-space:nowrap;
+      cursor:pointer; transition:all .2s; user-select:none;
+      position:relative;
     }
-    .dir-arrow { font-size:14px; }
+    .lang-card.active {
+      background:rgba(201,168,76,.12); border-color:var(--gold);
+    }
+    .lang-card.active .lang-flag { filter:none; }
+    .lang-card:not(.active) { opacity:.5; }
+    .lang-card:not(.active) .lang-flag { filter:grayscale(1); }
+    .lang-flag { font-size:22px; line-height:1; }
+    .lang-name { font-size:11px; color:var(--dim); font-weight:600; white-space:nowrap; }
+    .lang-card.active .lang-name { color:var(--gold); }
+    .lang-bible { font-size:9px; color:var(--dim); opacity:.6; white-space:nowrap; }
+    .lang-check {
+      position:absolute; top:5px; right:6px;
+      width:14px; height:14px; border-radius:50%;
+      background:var(--gold); display:none;
+      align-items:center; justify-content:center;
+      font-size:8px; color:#000; font-weight:700;
+    }
+    .lang-card.active .lang-check { display:flex; }
+
+    /* QR/링크 섹션 */
+    .lang-links {
+      display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+    }
+    .lang-link-pill {
+      display:flex; align-items:center; gap:6px;
+      padding:4px 12px; border-radius:20px;
+      background:rgba(255,255,255,.03); border:1px solid var(--border);
+      font-size:11px; color:var(--dim);
+    }
+    .lang-link-pill a { color:var(--gold); text-decoration:none; font-size:11px; }
+    .lang-link-pill a:hover { text-decoration:underline; }
+    .pill-copy { background:transparent; border:none; color:var(--dim); cursor:pointer; font-size:10px; padding:0 4px; }
+    .pill-copy:hover { color:var(--gold); }
 
     /* 참고자료 바 */
     .ref-bar { background:#0a1020; border-bottom:1px solid var(--border); padding:9px 22px; display:flex; align-items:center; gap:12px; flex-shrink:0; }
     .ref-upload-btn { display:flex; align-items:center; gap:8px; padding:7px 16px; border-radius:9px; border:none; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#0f1f3a,#162a4a); color:var(--blue); border:1px solid #1e3a5a; white-space:nowrap; transition:all .2s; }
-    .ref-upload-btn:hover { border-color:#2a5a8a; }
     .ref-status { flex:1; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:8px; padding:6px 14px; font-size:12px; color:#3a5070; min-height:34px; }
     .ref-status.loaded { border-color:#1e3a5a; color:var(--blue); }
-    .ref-status.loaded .ref-dot { background:var(--blue); box-shadow:0 0 6px var(--blue); }
     .ref-dot { width:6px; height:6px; border-radius:50%; background:#2a3a50; flex-shrink:0; }
-    .ref-clear { background:transparent; border:1px solid var(--border); color:#3a5070; padding:4px 11px; border-radius:6px; font-size:11px; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .ref-status.loaded .ref-dot { background:var(--blue); box-shadow:0 0 6px var(--blue); }
+    .ref-clear { background:transparent; border:1px solid var(--border); color:#3a5070; padding:4px 11px; border-radius:6px; font-size:11px; cursor:pointer; font-family:inherit; }
     .ref-clear:hover { border-color:var(--red); color:var(--red); }
     #fileInput { display:none; }
 
@@ -106,20 +120,26 @@
     .panel:last-child { border-right:none; }
     .panel-top { padding:11px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.015); flex-shrink:0; }
     .panel-label { font-size:10px; color:var(--dim); letter-spacing:.15em; text-transform:uppercase; }
-    textarea { flex:1; background:transparent; border:none; color:#b8cce0; font-size:15px; line-height:1.85; padding:18px; resize:none; outline:none; font-family:Georgia,'Noto Serif KR',serif; }
+    textarea { flex:1; background:transparent; border:none; color:#b8cce0; font-size:15px; line-height:1.85; padding:18px; resize:none; outline:none; font-family:Georgia,serif; }
     textarea::placeholder { color:#1e2d40; }
     .panel-bot { padding:11px 18px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
     .btn-main { padding:9px 24px; border-radius:8px; border:none; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; background:linear-gradient(135deg,var(--gold),#8a6020); color:#08080f; }
     .btn-main:disabled { background:#1c2840; color:#2a3a50; cursor:not-allowed; }
     .btn-main:not(:disabled):hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(201,168,76,.3); }
     .translating { font-size:11px; color:var(--gold); display:none; }
-    .translating.show { display:block; animation:blink 1.2s infinite; }
+    .translating.show { display:flex; align-items:center; gap:6px; animation:blink 1.2s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
-    .result-area { flex:1; padding:18px; overflow-y:auto; font-family:'Noto Serif KR',serif; }
-    .result-hint { color:#1c2840; font-size:15px; line-height:1.8; }
-    .result-text { color:#eae0cc; font-size:17px; line-height:2.05; word-break:keep-all; }
-    .sent-label  { font-size:11px; color:var(--green); }
-    .btn-sm { padding:5px 13px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--dim); font-size:11px; cursor:pointer; font-family:inherit; transition:all .2s; }
+
+    /* 번역 결과 탭 */
+    .result-tabs { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; background:rgba(255,255,255,.01); }
+    .result-tab { padding:8px 16px; font-size:11px; color:var(--dim); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; white-space:nowrap; }
+    .result-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+    .result-pane { display:none; flex:1; overflow-y:auto; padding:18px; }
+    .result-pane.active { display:block; }
+    .result-text { color:#eae0cc; font-size:16px; line-height:2; word-break:break-word; font-family:Georgia,serif; }
+    .result-hint { color:#1c2840; font-size:14px; line-height:1.8; }
+
+    .btn-sm { padding:5px 13px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--dim); font-size:11px; cursor:pointer; font-family:inherit; }
     .btn-sm:hover { border-color:#2c3f58; color:var(--text); }
 
     /* 이력 */
@@ -127,8 +147,7 @@
     .history-lbl { font-size:9px; color:#1c2840; letter-spacing:.15em; text-transform:uppercase; margin-bottom:6px; }
     .history-row { display:flex; gap:7px; overflow-x:auto; padding-bottom:3px; }
     .h-item { flex-shrink:0; max-width:200px; background:#0f1520; border:1px solid var(--border); border-radius:6px; padding:6px 11px; cursor:pointer; }
-    .h-item:hover { border-color:#2c3f58; }
-    .h-time    { font-size:9px; color:#1c2840; margin-bottom:3px; }
+    .h-time { font-size:9px; color:#1c2840; margin-bottom:3px; }
     .h-preview { font-size:11px; color:#2c3f58; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
     /* 모달 */
@@ -145,7 +164,7 @@
 
     ::-webkit-scrollbar { width:3px; height:3px; }
     ::-webkit-scrollbar-thumb { background:#1c2840; border-radius:2px; }
-    #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1c2840; border:1px solid #2c3f58; color:var(--text); padding:9px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .3s; pointer-events:none; z-index:9; }
+    #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1c2840; border:1px solid #2c3f58; color:var(--text); padding:9px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .3s; pointer-events:none; z-index:99; }
     #toast.show { opacity:1; }
   </style>
 </head>
@@ -165,33 +184,55 @@
     <span id="statusTxt">서버 확인 중...</span>
   </div>
   <div class="viewer-box">
-    <span>성도 화면:</span>
-    <a id="vUrl" class="viewer-url" href="/viewer" target="_blank">/viewer</a>
-    <button class="copy-btn" onclick="copyUrl()">링크 복사</button>
+    <span>뷰어 링크:</span>
+    <span id="baseUrl" style="font-size:12px;color:var(--dim);">loading...</span>
   </div>
 </header>
 
-<!-- 번역 방향 바 -->
-<div class="dir-bar">
-  <div class="dir-bar-top">
-    <span class="dir-label">번역 방향</span>
-    <div class="dir-indicator" id="dirIndicator">
-      <span class="dir-arrow">🔄</span>
-      <span id="dirLabel">자동 감지</span>
+<!-- 언어 선택 -->
+<div class="lang-bar">
+  <div class="lang-bar-title">번역할 언어 선택 (복수 선택 가능)</div>
+  <div class="lang-grid">
+
+    <div class="lang-card active" data-lang="ko" onclick="toggleLang('ko')">
+      <div class="lang-check">✓</div>
+      <div class="lang-flag">🇰🇷</div>
+      <div class="lang-name">한국어</div>
+      <div class="lang-bible">개역개정</div>
     </div>
+
+    <div class="lang-card active" data-lang="en" onclick="toggleLang('en')">
+      <div class="lang-check">✓</div>
+      <div class="lang-flag">🇺🇸</div>
+      <div class="lang-name">English</div>
+      <div class="lang-bible">NIV / ESV</div>
+    </div>
+
+    <div class="lang-card" data-lang="tl" onclick="toggleLang('tl')">
+      <div class="lang-check">✓</div>
+      <div class="lang-flag">🇵🇭</div>
+      <div class="lang-name">Tagalog</div>
+      <div class="lang-bible">MBB</div>
+    </div>
+
+    <div class="lang-card" data-lang="es" onclick="toggleLang('es')">
+      <div class="lang-check">✓</div>
+      <div class="lang-flag">🇪🇸</div>
+      <div class="lang-name">Español</div>
+      <div class="lang-bible">RV60</div>
+    </div>
+
+    <div class="lang-card" data-lang="zh" onclick="toggleLang('zh')">
+      <div class="lang-check">✓</div>
+      <div class="lang-flag">🇨🇳</div>
+      <div class="lang-name">中文</div>
+      <div class="lang-bible">和合本</div>
+    </div>
+
   </div>
-  <div class="dir-btns">
-    <div class="dir-row">
-      <button class="dir-btn active-auto" id="btn-auto"  onclick="setDir('auto')">🔄 자동</button>
-      <button class="dir-btn" id="btn-en-ko" onclick="setDir('en-ko')">🇺🇸→🇰🇷 한국어</button>
-      <button class="dir-btn" id="btn-ko-en" onclick="setDir('ko-en')">🇰🇷→🇺🇸 영어</button>
-    </div>
-    <div class="dir-row">
-      <button class="dir-btn" id="btn-en-tl" onclick="setDir('en-tl')">🇺🇸→🇵🇭 타갈로그</button>
-      <button class="dir-btn" id="btn-en-es" onclick="setDir('en-es')">🇺🇸→🇪🇸 스페인어</button>
-      <button class="dir-btn" id="btn-en-zh" onclick="setDir('en-zh')">🇺🇸→🇨🇳 중국어</button>
-    </div>
-  </div>
+
+  <!-- 뷰어 링크 -->
+  <div class="lang-links" id="langLinks"></div>
 </div>
 
 <!-- 참고자료 바 -->
@@ -213,7 +254,7 @@
   <button id="micBtn" class="mic-btn" onclick="toggleMic()">
     <span>🎤</span><span id="micLabel">음성 인식 시작</span>
   </button>
-  <div id="interimBox" class="interim-box">마이크 버튼을 누르면 설교자의 음성을 자동 인식합니다...</div>
+  <div id="interimBox" class="interim-box">마이크 버튼을 누르면 음성을 자동 인식합니다...</div>
   <div class="auto-group">
     <label>자동 번역</label>
     <div id="autoToggle" class="toggle on" onclick="toggleAuto()"></div>
@@ -231,10 +272,9 @@
 
 <!-- 본문 -->
 <main>
-  <!-- 왼쪽: 원문 -->
   <div class="panel">
     <div class="panel-top">
-      <span class="panel-label" id="srcLabel">🎤 원문 입력</span>
+      <span class="panel-label">🎤 원문 입력</span>
       <span id="wc" style="font-size:11px;color:#1c2840;">0 단어</span>
     </div>
     <textarea id="src" placeholder="음성 인식된 텍스트가 자동 입력됩니다.
@@ -247,19 +287,17 @@
     </div>
   </div>
 
-  <!-- 오른쪽: 번역 결과 -->
   <div class="panel">
     <div class="panel-top">
-      <span class="panel-label" id="resultLabel">번역 결과</span>
-      <span id="sentLbl" class="sent-label"></span>
+      <span class="panel-label">번역 결과</span>
+      <span id="sentLbl" style="font-size:11px;color:var(--green);"></span>
     </div>
-    <div class="result-area">
-      <div id="hint" class="result-hint">번역 완료 즉시 성도 화면에 자동 전송됩니다.</div>
-      <div id="result" class="result-text" style="display:none;"></div>
-    </div>
+    <!-- 언어별 탭 -->
+    <div class="result-tabs" id="resultTabs"></div>
+    <!-- 언어별 결과 패널 -->
+    <div id="resultPanes" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;"></div>
     <div class="panel-bot">
       <div style="display:flex;gap:7px;">
-        <button class="btn-sm" onclick="copyKo()">복사</button>
         <button class="btn-sm" onclick="clearAll()">초기화</button>
       </div>
       <span id="lastTime" style="font-size:10px;color:#1c2840;"></span>
@@ -283,7 +321,7 @@
     <div class="modal-body"><div id="modalTxt" class="modal-txt"></div></div>
     <div class="modal-foot">
       <button class="btn-sm" onclick="hideModal()">닫기</button>
-      <button class="btn-blue" onclick="hideModal()">✅ 확인 — 번역에 적용됨</button>
+      <button class="btn-blue" onclick="hideModal()">✅ 확인</button>
     </div>
   </div>
 </div>
@@ -297,15 +335,82 @@
   }
 
   const API = '/api/translate';
-  const histArr = [];
-  let koText = '', isTranslating = false;
-  let refText = '', refFileName = '';
-  let currentDir = 'auto'; // 'auto' | 'en-ko' | 'ko-en'
+  const BASE = location.origin;
+  const LANG_INFO = {
+    ko: { flag:'🇰🇷', name:'한국어' },
+    en: { flag:'🇺🇸', name:'English' },
+    tl: { flag:'🇵🇭', name:'Tagalog' },
+    es: { flag:'🇪🇸', name:'Español' },
+    zh: { flag:'🇨🇳', name:'中文' },
+  };
 
-  // 뷰어 URL
-  const vUrl = location.origin + '/viewer';
-  document.getElementById('vUrl').href = vUrl;
-  document.getElementById('vUrl').textContent = vUrl;
+  // 활성 언어 목록
+  let activeLangs = new Set(['ko', 'en']);
+  let isTranslating = false;
+  let refText = '';
+  let histArr = [];
+
+  document.getElementById('baseUrl').textContent = BASE + '/viewer?lang=...';
+
+  // ── 언어 토글 ──
+  function toggleLang(lang) {
+    const card = document.querySelector(`.lang-card[data-lang="${lang}"]`);
+    if (activeLangs.has(lang)) {
+      if (activeLangs.size <= 1) { toast('최소 1개 언어를 선택해야 합니다'); return; }
+      activeLangs.delete(lang);
+      card.classList.remove('active');
+    } else {
+      activeLangs.add(lang);
+      card.classList.add('active');
+    }
+    renderTabs();
+    renderLinks();
+  }
+
+  function renderLinks() {
+    const el = document.getElementById('langLinks');
+    el.innerHTML = [...activeLangs].map(lang => {
+      const url = `${BASE}/viewer?lang=${lang}`;
+      const info = LANG_INFO[lang];
+      return `<div class="lang-link-pill">
+        <span>${info.flag} ${info.name}:</span>
+        <a href="${url}" target="_blank">${url}</a>
+        <button class="pill-copy" onclick="copyText('${url}')" title="복사">📋</button>
+      </div>`;
+    }).join('');
+  }
+
+  function renderTabs() {
+    const tabs = document.getElementById('resultTabs');
+    const panes = document.getElementById('resultPanes');
+    const langs = [...activeLangs];
+
+    // 현재 활성 탭 기억
+    const activeTab = tabs.querySelector('.result-tab.active')?.dataset.lang || langs[0];
+
+    tabs.innerHTML = langs.map(lang => {
+      const info = LANG_INFO[lang];
+      return `<div class="result-tab${lang === activeTab ? ' active' : ''}" data-lang="${lang}" onclick="switchTab('${lang}')">${info.flag} ${info.name}</div>`;
+    }).join('');
+
+    panes.innerHTML = langs.map(lang => {
+      return `<div class="result-pane${lang === activeTab ? ' active' : ''}" id="pane-${lang}">
+        <div class="result-hint" id="hint-${lang}">번역 완료 시 성도 화면에 자동 전송됩니다.</div>
+        <div class="result-text" id="result-${lang}" style="display:none;"></div>
+      </div>`;
+    }).join('');
+  }
+
+  function switchTab(lang) {
+    document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.result-pane').forEach(p => p.classList.remove('active'));
+    document.querySelector(`.result-tab[data-lang="${lang}"]`)?.classList.add('active');
+    document.getElementById(`pane-${lang}`)?.classList.add('active');
+  }
+
+  // 초기 렌더
+  renderTabs();
+  renderLinks();
 
   // 단어수
   document.getElementById('src').addEventListener('input', updateWC);
@@ -314,80 +419,9 @@
     document.getElementById('wc').textContent = n + ' 단어';
   }
 
-  // ── 번역 방향 설정 ──
-  const DIR_CONFIG = {
-    'auto':  {
-      micLang: 'en-US', // 기본 음성인식 언어
-      srcLabel: '🎤 원문 입력 (자동 감지)',
-      resultLabel: '번역 결과 (자동)',
-      indicator: '🔄 자동 감지 — 언어를 자동으로 판별합니다',
-      indicatorIcon: '🔄',
-    },
-    'en-ko': {
-      micLang: 'en-US',
-      srcLabel: '🇺🇸 영어 원문',
-      resultLabel: '🇰🇷 한국어 번역',
-      indicator: '🇺🇸 영어 → 🇰🇷 한국어',
-      indicatorIcon: '→',
-    },
-    'ko-en': {
-      micLang: 'ko-KR',
-      srcLabel: '🇰🇷 한국어 원문',
-      resultLabel: '🇺🇸 English Translation',
-      indicator: '🇰🇷 한국어 → 🇺🇸 English',
-      indicatorIcon: '→',
-    },
-    'en-tl': {
-      micLang: 'en-US',
-      srcLabel: '🇺🇸 English (원문)',
-      resultLabel: '🇵🇭 Tagalog Translation (MBB)',
-      indicator: '🇺🇸 English → 🇵🇭 Tagalog · Magandang Balita Biblia',
-      indicatorIcon: '→',
-    },
-    'en-es': {
-      micLang: 'en-US',
-      srcLabel: '🇺🇸 English (원문)',
-      resultLabel: '🇪🇸 Traducción al Español (RV60)',
-      indicator: '🇺🇸 English → 🇪🇸 Español · Reina-Valera 1960',
-      indicatorIcon: '→',
-    },
-    'en-zh': {
-      micLang: 'en-US',
-      srcLabel: '🇺🇸 English (원문)',
-      resultLabel: '🇨🇳 中文翻译 (和合本)',
-      indicator: '🇺🇸 English → 🇨🇳 简体中文 · 和合本 (CUV)',
-      indicatorIcon: '→',
-    },
-  };
-
-  function setDir(dir) {
-    currentDir = dir;
-    const cfg = DIR_CONFIG[dir];
-
-    // 버튼 스타일 업데이트
-    document.getElementById('btn-auto').className  = 'dir-btn' + (dir==='auto'  ? ' active-auto'  : '');
-    document.getElementById('btn-en-ko').className = 'dir-btn' + (dir==='en-ko' ? ' active-en-ko' : '');
-    document.getElementById('btn-ko-en').className = 'dir-btn' + (dir==='ko-en' ? ' active-ko-en' : '');
-    document.getElementById('btn-en-tl').className = 'dir-btn' + (dir==='en-tl' ? ' active-en-tl' : '');
-    document.getElementById('btn-en-es').className = 'dir-btn' + (dir==='en-es' ? ' active-en-es' : '');
-    document.getElementById('btn-en-zh').className = 'dir-btn' + (dir==='en-zh' ? ' active-en-zh' : '');
-
-    // 라벨 업데이트
-    document.getElementById('srcLabel').textContent    = cfg.srcLabel;
-    document.getElementById('resultLabel').textContent = cfg.resultLabel;
-    document.getElementById('dirLabel').textContent = cfg.indicator;
-
-    // 마이크가 켜져 있으면 재시작 (언어 변경)
-    if (isListening) { stopMic(); setTimeout(startMic, 300); }
-
-    toast(`번역 방향: ${cfg.indicator}`);
-  }
-
   // ── 참고자료 ──
   async function handleFile(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    refFileName = file.name;
+    const file = e.target.files[0]; if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
     setRefStatus('loading', `⏳ ${file.name} 읽는 중...`);
     try {
@@ -396,11 +430,11 @@
       else if (ext === 'docx') refText = await extractDOCX(file);
       else { toast('❌ PDF, DOCX, TXT만 지원합니다'); return; }
       if (refText.length > 8000) refText = refText.slice(0, 8000) + '\n\n[... 이하 생략 ...]';
-      setRefStatus('loaded', `✅ ${file.name} (${Math.round(refText.length/100)/10}KB 로드됨)`);
+      setRefStatus('loaded', `✅ ${file.name} (${Math.round(refText.length/100)/10}KB)`);
       document.getElementById('refPreviewBtn').style.display = 'block';
       document.getElementById('refClearBtn').style.display = 'block';
       document.getElementById('modalTxt').textContent = refText;
-      toast('✅ 참고자료 로드됨 — 번역 시 자동 반영됩니다');
+      toast('✅ 참고자료 로드됨');
     } catch(err) { setRefStatus('', '❌ 오류: ' + err.message); }
     e.target.value = '';
   }
@@ -429,11 +463,11 @@
   }
 
   function clearRef() {
-    refText = ''; refFileName = '';
+    refText = '';
     setRefStatus('', 'PDF · DOCX · TXT 파일을 업로드하면 번역 품질이 향상됩니다');
     document.getElementById('refPreviewBtn').style.display = 'none';
     document.getElementById('refClearBtn').style.display = 'none';
-    toast('참고자료가 삭제됐습니다');
+    toast('참고자료 삭제됨');
   }
 
   function showModal() { document.getElementById('modalBg').classList.add('show'); }
@@ -453,11 +487,9 @@
 
   function startMic() {
     recognition = new SpeechRecognition();
-    // 방향에 따라 음성인식 언어 자동 설정
-    recognition.lang = DIR_CONFIG[currentDir].micLang;
+    recognition.lang = 'en-US';
     recognition.continuous = true;
     recognition.interimResults = true;
-
     recognition.onresult = (e) => {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -479,14 +511,8 @@
       if (interim) { box.textContent = '🎤 ' + interim; box.classList.add('active'); }
       else { box.textContent = '✅ 인식 중...'; box.classList.remove('active'); }
     };
-
-    recognition.onerror = (e) => {
-      if (e.error === 'not-allowed') { toast('❌ 마이크 권한을 허용해주세요'); stopMic(); }
-    };
-    recognition.onend = () => {
-      if (isListening) setTimeout(() => { try { recognition.start(); } catch(e){} }, 200);
-    };
-
+    recognition.onerror = (e) => { if (e.error === 'not-allowed') { toast('❌ 마이크 권한 허용 필요'); stopMic(); } };
+    recognition.onend = () => { if (isListening) setTimeout(() => { try { recognition.start(); } catch(e){} }, 200); };
     try {
       recognition.start();
       isListening = true;
@@ -494,7 +520,6 @@
       document.getElementById('micLabel').textContent = '음성 인식 중 — 클릭하면 정지';
       document.getElementById('interimBox').textContent = '🎤 마이크 준비됨';
       document.getElementById('interimBox').classList.add('active');
-      toast('🎤 음성 인식 시작됐습니다');
     } catch(e) { toast('마이크 오류: ' + e.message); }
   }
 
@@ -517,44 +542,67 @@
   async function doTranslate() {
     const text = document.getElementById('src').value.trim();
     if (!text) { toast('번역할 텍스트가 없습니다'); return; }
+    if (activeLangs.size === 0) { toast('언어를 최소 1개 선택해주세요'); return; }
     if (isTranslating) return;
 
     isTranslating = true;
     document.getElementById('tBtn').disabled = true;
     document.getElementById('spinning').classList.add('show');
-    document.getElementById('hint').style.display = 'none';
-    document.getElementById('result').style.display = 'block';
-    document.getElementById('result').textContent = '번역 중...';
     document.getElementById('sentLbl').textContent = '';
 
     const textToSend = text;
     document.getElementById('src').value = '';
     updateWC();
 
+    // 모든 결과 패널 "번역 중..." 표시
+    activeLangs.forEach(lang => {
+      const r = document.getElementById(`result-${lang}`);
+      const h = document.getElementById(`hint-${lang}`);
+      if (r) { r.style.display = 'block'; r.textContent = '번역 중...'; }
+      if (h) h.style.display = 'none';
+    });
+
     try {
-      const r = await fetch(API, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ text: textToSend, refText: refText || null, direction: currentDir })
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: textToSend,
+          refText: refText || null,
+          langs: [...activeLangs]
+        })
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || '서버 오류');
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || '서버 오류');
 
-      koText = d.translated;
-      document.getElementById('result').textContent = koText;
+      // 각 언어 결과 표시
+      const langs = Object.keys(d.results);
+      langs.forEach(lang => {
+        const r = document.getElementById(`result-${lang}`);
+        if (r) r.textContent = d.results[lang];
+      });
 
-      // 실제 번역 방향 표시
-      const dirEmojiMap = { 'ko-en':'🇰🇷→🇺🇸', 'en-ko':'🇺🇸→🇰🇷', 'en-tl':'🇺🇸→🇵🇭', 'en-es':'🇺🇸→🇪🇸', 'en-zh':'🇺🇸→🇨🇳' };
-      const dirEmoji = dirEmojiMap[d.direction] || '🔄';
-      document.getElementById('sentLbl').textContent =
-        `✅ ${dirEmoji} 번역 완료 · 성도 화면 전송됨`;
+      const langEmojis = langs.map(l => LANG_INFO[l]?.flag || l).join(' ');
+      document.getElementById('sentLbl').textContent = `✅ ${langEmojis} 각 뷰어에 전송 완료`;
       document.getElementById('lastTime').textContent = new Date().toLocaleTimeString('ko-KR');
-      addHistory(textToSend, koText, d.direction);
-      toast('✅ 번역 완료 — 성도 화면에 전송됐습니다');
+
+      // 오류 언어 표시
+      if (d.errors) {
+        Object.keys(d.errors).forEach(lang => {
+          const r = document.getElementById(`result-${lang}`);
+          if (r) r.textContent = '오류: ' + d.errors[lang];
+        });
+      }
+
+      addHistory(textToSend, d.results);
+      toast(`✅ ${langs.length}개 언어 번역 완료 — 각 뷰어에 전송됨`);
 
     } catch(e) {
       document.getElementById('src').value = textToSend; updateWC();
-      document.getElementById('result').textContent = '오류: ' + e.message;
+      activeLangs.forEach(lang => {
+        const r = document.getElementById(`result-${lang}`);
+        if (r) r.textContent = '오류: ' + e.message;
+      });
       toast('❌ ' + e.message);
     }
 
@@ -563,41 +611,40 @@
     document.getElementById('spinning').classList.remove('show');
   }
 
-  function addHistory(src, translated, dir) {
-    const dirEmoji = dir === 'ko-en' ? '🇰🇷→🇺🇸' : '🇺🇸→🇰🇷';
-    histArr.unshift({ src, translated, dir, t: new Date().toLocaleTimeString('ko-KR') });
+  function addHistory(src, results) {
+    histArr.unshift({ src, results, t: new Date().toLocaleTimeString('ko-KR') });
     if (histArr.length > 8) histArr.pop();
     document.getElementById('hist').style.display = 'block';
     document.getElementById('histRow').innerHTML = histArr.map((h,i) =>
       `<div class="h-item" onclick="loadH(${i})">
-        <div class="h-time">${h.t} ${h.dir==='ko-en'?'🇰🇷→🇺🇸':'🇺🇸→🇰🇷'}</div>
-        <div class="h-preview">${h.src.slice(0,45)}...</div>
+        <div class="h-time">${h.t}</div>
+        <div class="h-preview">${h.src.slice(0,50)}...</div>
       </div>`
     ).join('');
   }
 
   function loadH(i) {
-    document.getElementById('src').value = histArr[i].src;
-    document.getElementById('result').textContent = histArr[i].translated;
-    document.getElementById('result').style.display = 'block';
-    document.getElementById('hint').style.display = 'none';
-    koText = histArr[i].translated; updateWC();
+    const h = histArr[i];
+    document.getElementById('src').value = h.src;
+    Object.keys(h.results).forEach(lang => {
+      const r = document.getElementById(`result-${lang}`);
+      if (r) { r.style.display = 'block'; r.textContent = h.results[lang]; }
+      const hint = document.getElementById(`hint-${lang}`);
+      if (hint) hint.style.display = 'none';
+    });
+    updateWC();
   }
 
   // 서버 상태
-  fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{"text":"ping"}' })
+  fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text:'ping', langs:['ko']}) })
     .then(() => { document.getElementById('dot').className='badge-dot ok'; document.getElementById('statusTxt').textContent='서버 연결됨'; })
     .catch(() => { document.getElementById('dot').className='badge-dot err'; document.getElementById('statusTxt').textContent='서버 오류'; });
 
-  function copyUrl() { navigator.clipboard.writeText(vUrl); toast('성도 링크 복사됨!'); }
-  function copyKo()  { if (koText) { navigator.clipboard.writeText(koText); toast('번역문 복사됨!'); } }
+  function copyText(t) { navigator.clipboard.writeText(t); toast('링크 복사됨!'); }
   function clearAll() {
     stopMic();
     document.getElementById('src').value = '';
-    document.getElementById('result').style.display = 'none';
-    document.getElementById('hint').style.display = 'block';
-    document.getElementById('sentLbl').textContent = '';
-    updateWC(); koText = '';
+    updateWC();
   }
   function toast(msg) {
     const t = document.getElementById('toast');
