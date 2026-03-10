@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -38,31 +39,37 @@
     /* ── 번역 방향 바 ── */
     .dir-bar {
       background:#090d18; border-bottom:2px solid var(--border);
-      padding:10px 22px; display:flex; align-items:center; gap:12px; flex-shrink:0;
+      padding:10px 22px; display:flex; flex-direction:column; gap:8px; flex-shrink:0;
     }
+    .dir-bar-top { display:flex; align-items:center; gap:10px; }
     .dir-label { font-size:11px; color:var(--dim); white-space:nowrap; }
 
-    /* 방향 버튼 그룹 */
-    .dir-btns { display:flex; gap:6px; }
+    /* 방향 버튼 그룹 — 2줄 고정 */
+    .dir-btns { display:flex; flex-direction:column; gap:6px; }
+    .dir-row   { display:flex; gap:6px; }
+    .dir-row .dir-btn { flex:1; text-align:center; }
     .dir-btn {
-      padding:7px 16px; border-radius:8px; border:1px solid var(--border);
+      padding:6px 13px; border-radius:8px; border:1px solid var(--border);
       background:transparent; color:var(--dim);
       font-size:12px; font-weight:600; cursor:pointer;
       font-family:inherit; transition:all .2s; white-space:nowrap;
     }
-    .dir-btn.active-auto   { background:rgba(201,168,76,.15); border-color:var(--gold);   color:var(--gold);   }
-    .dir-btn.active-en-ko  { background:rgba(96,165,250,.12); border-color:var(--blue);   color:var(--blue);   }
+    .dir-btn.active-auto   { background:rgba(201,168,76,.15); border-color:var(--gold);    color:var(--gold);   }
+    .dir-btn.active-en-ko  { background:rgba(96,165,250,.12); border-color:var(--blue);    color:var(--blue);   }
     .dir-btn.active-ko-en  { background:rgba(167,139,250,.12); border-color:var(--purple); color:var(--purple); }
-    .dir-btn:hover:not(.active-auto):not(.active-en-ko):not(.active-ko-en) { border-color:#2c3f58; color:var(--text); }
+    .dir-btn.active-en-tl  { background:rgba(52,211,153,.12);  border-color:#34d399;       color:#34d399; }
+    .dir-btn.active-en-es  { background:rgba(251,146,60,.12);  border-color:#fb923c;       color:#fb923c; }
+    .dir-btn.active-en-zh  { background:rgba(248,113,113,.12); border-color:#f87171;       color:#f87171; }
+    .dir-btn:hover { border-color:#2c3f58; color:var(--text); }
 
     /* 현재 방향 표시 */
     .dir-indicator {
       display:flex; align-items:center; gap:8px;
-      padding:6px 14px; border-radius:8px;
+      padding:5px 12px; border-radius:8px;
       border:1px solid var(--border); background:rgba(255,255,255,.02);
-      font-size:13px; font-weight:600;
+      font-size:12px; font-weight:600; white-space:nowrap;
     }
-    .dir-arrow { font-size:16px; }
+    .dir-arrow { font-size:14px; }
 
     /* 참고자료 바 */
     .ref-bar { background:#0a1020; border-bottom:1px solid var(--border); padding:9px 22px; display:flex; align-items:center; gap:12px; flex-shrink:0; }
@@ -166,15 +173,24 @@
 
 <!-- 번역 방향 바 -->
 <div class="dir-bar">
-  <span class="dir-label">번역 방향</span>
-  <div class="dir-btns">
-    <button class="dir-btn active-auto" id="btn-auto"  onclick="setDir('auto')">🔄 자동 감지</button>
-    <button class="dir-btn" id="btn-en-ko" onclick="setDir('en-ko')">🇺🇸 영어 → 🇰🇷 한국어</button>
-    <button class="dir-btn" id="btn-ko-en" onclick="setDir('ko-en')">🇰🇷 한국어 → 🇺🇸 영어</button>
+  <div class="dir-bar-top">
+    <span class="dir-label">번역 방향</span>
+    <div class="dir-indicator" id="dirIndicator">
+      <span class="dir-arrow">🔄</span>
+      <span id="dirLabel">자동 감지</span>
+    </div>
   </div>
-  <div class="dir-indicator" id="dirIndicator">
-    <span class="dir-arrow">🔄</span>
-    <span id="dirLabel">자동 감지 — 언어를 자동으로 판별합니다</span>
+  <div class="dir-btns">
+    <div class="dir-row">
+      <button class="dir-btn active-auto" id="btn-auto"  onclick="setDir('auto')">🔄 자동</button>
+      <button class="dir-btn" id="btn-en-ko" onclick="setDir('en-ko')">🇺🇸→🇰🇷 한국어</button>
+      <button class="dir-btn" id="btn-ko-en" onclick="setDir('ko-en')">🇰🇷→🇺🇸 영어</button>
+    </div>
+    <div class="dir-row">
+      <button class="dir-btn" id="btn-en-tl" onclick="setDir('en-tl')">🇺🇸→🇵🇭 타갈로그</button>
+      <button class="dir-btn" id="btn-en-es" onclick="setDir('en-es')">🇺🇸→🇪🇸 스페인어</button>
+      <button class="dir-btn" id="btn-en-zh" onclick="setDir('en-zh')">🇺🇸→🇨🇳 중국어</button>
+    </div>
   </div>
 </div>
 
@@ -321,6 +337,27 @@
       indicator: '🇰🇷 한국어 → 🇺🇸 English',
       indicatorIcon: '→',
     },
+    'en-tl': {
+      micLang: 'en-US',
+      srcLabel: '🇺🇸 English (원문)',
+      resultLabel: '🇵🇭 Tagalog Translation (MBB)',
+      indicator: '🇺🇸 English → 🇵🇭 Tagalog · Magandang Balita Biblia',
+      indicatorIcon: '→',
+    },
+    'en-es': {
+      micLang: 'en-US',
+      srcLabel: '🇺🇸 English (원문)',
+      resultLabel: '🇪🇸 Traducción al Español (RV60)',
+      indicator: '🇺🇸 English → 🇪🇸 Español · Reina-Valera 1960',
+      indicatorIcon: '→',
+    },
+    'en-zh': {
+      micLang: 'en-US',
+      srcLabel: '🇺🇸 English (원문)',
+      resultLabel: '🇨🇳 中文翻译 (和合本)',
+      indicator: '🇺🇸 English → 🇨🇳 简体中文 · 和合本 (CUV)',
+      indicatorIcon: '→',
+    },
   };
 
   function setDir(dir) {
@@ -331,11 +368,14 @@
     document.getElementById('btn-auto').className  = 'dir-btn' + (dir==='auto'  ? ' active-auto'  : '');
     document.getElementById('btn-en-ko').className = 'dir-btn' + (dir==='en-ko' ? ' active-en-ko' : '');
     document.getElementById('btn-ko-en').className = 'dir-btn' + (dir==='ko-en' ? ' active-ko-en' : '');
+    document.getElementById('btn-en-tl').className = 'dir-btn' + (dir==='en-tl' ? ' active-en-tl' : '');
+    document.getElementById('btn-en-es').className = 'dir-btn' + (dir==='en-es' ? ' active-en-es' : '');
+    document.getElementById('btn-en-zh').className = 'dir-btn' + (dir==='en-zh' ? ' active-en-zh' : '');
 
     // 라벨 업데이트
     document.getElementById('srcLabel').textContent    = cfg.srcLabel;
     document.getElementById('resultLabel').textContent = cfg.resultLabel;
-    document.getElementById('dirLabel').textContent    = cfg.indicator;
+    document.getElementById('dirLabel').textContent = cfg.indicator;
 
     // 마이크가 켜져 있으면 재시작 (언어 변경)
     if (isListening) { stopMic(); setTimeout(startMic, 300); }
@@ -504,7 +544,8 @@
       document.getElementById('result').textContent = koText;
 
       // 실제 번역 방향 표시
-      const dirEmoji = d.direction === 'ko-en' ? '🇰🇷→🇺🇸' : '🇺🇸→🇰🇷';
+      const dirEmojiMap = { 'ko-en':'🇰🇷→🇺🇸', 'en-ko':'🇺🇸→🇰🇷', 'en-tl':'🇺🇸→🇵🇭', 'en-es':'🇺🇸→🇪🇸', 'en-zh':'🇺🇸→🇨🇳' };
+      const dirEmoji = dirEmojiMap[d.direction] || '🔄';
       document.getElementById('sentLbl').textContent =
         `✅ ${dirEmoji} 번역 완료 · 성도 화면 전송됨`;
       document.getElementById('lastTime').textContent = new Date().toLocaleTimeString('ko-KR');
