@@ -4,7 +4,7 @@
 const Pusher = require('pusher');
 
 module.exports = async (req, res) => {
-  // CORS 허용 (어느 브라우저에서나 접근 가능하도록)
+  // CORS 허용
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -16,13 +16,24 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: '번역할 텍스트를 입력해주세요' });
   }
 
+  // ── 환경변수 확인 (누락 시 명확한 오류 메시지)
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('ANTHROPIC_API_KEY 환경변수가 없습니다');
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' });
+  }
+  if (!process.env.PUSHER_APP_ID || !process.env.PUSHER_KEY || !process.env.PUSHER_SECRET) {
+    console.error('Pusher 환경변수가 없습니다');
+    return res.status(500).json({ error: 'Pusher 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' });
+  }
+
   try {
     // ① Claude API로 번역
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
@@ -37,7 +48,17 @@ module.exports = async (req, res) => {
       })
     });
 
-    if (!claudeRes.ok) throw new Error('번역 API 오류');
+    // 오류 시 Anthropic의 실제 오류 메시지를 반환
+    if (!claudeRes.ok) {
+      const errBody = await claudeRes.text();
+      console.error('Claude API 오류 상태코드:', claudeRes.status);
+      console.error('Claude API 오류 내용:', errBody);
+      return res.status(500).json({
+        error: `Claude API 오류 (${claudeRes.status})`,
+        detail: errBody
+      });
+    }
+
     const claudeData = await claudeRes.json();
     const korean = claudeData.content[0].text;
 
@@ -46,7 +67,7 @@ module.exports = async (req, res) => {
       appId:   process.env.PUSHER_APP_ID,
       key:     process.env.PUSHER_KEY,
       secret:  process.env.PUSHER_SECRET,
-      cluster: process.env.PUSHER_CLUSTER,
+      cluster: process.env.PUSHER_CLUSTER || 'us2',
       useTLS:  true
     });
 
@@ -59,7 +80,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ korean, success: true });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: '오류가 발생했습니다: ' + err.message });
+    console.error('전체 오류:', err);
+    res.status(500).json({ error: err.message });
   }
 };
