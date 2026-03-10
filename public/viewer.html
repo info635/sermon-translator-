@@ -375,6 +375,11 @@
   <span style="font-size:11px;color:var(--text-faint);font-family:'Noto Sans KR',sans-serif;">글자 크기</span>
 </div>
 
+<!-- 새 번역 알림 배너 -->
+<div id="newBadge" class="new-badge" onclick="scrollToLatest()">
+  ↓ 새 번역이 추가됐습니다
+</div>
+
 <!-- 재연결 오버레이 -->
 <div id="reconnectOverlay" class="reconnect-overlay">
   <div class="spinner"></div>
@@ -384,8 +389,8 @@
 
 <script>
   /* ── Pusher 키 설정 ── */
-const PUSHER_KEY     = '9970878443f485296baf';      // ← 여기에 Pusher Key 입력
-  const PUSHER_CLUSTER = 'mt1';  // ← 여기에 Pusher Cluster 입력
+  const PUSHER_KEY     = 'PUSHER_KEY_HERE';
+  const PUSHER_CLUSTER = 'PUSHER_CLUSTER_HERE';
 
   /* ── 테마 (기본: 라이트) ── */
   const savedTheme = localStorage.getItem('sermon-theme') || 'light';
@@ -543,12 +548,37 @@ const PUSHER_KEY     = '9970878443f485296baf';      // ← 여기에 Pusher Key 
     if (allTexts.length > 50) allTexts.shift();
     localStorage.setItem('sermon-transcript', JSON.stringify(allTexts));
 
-    // 새 항목으로 스크롤
-    setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    // 사용자가 위에서 읽는 중이면 배너 표시, 아니면 자동 스크롤
+    if (userIsReading) {
+      document.getElementById('newBadge').classList.remove('show');
+      void document.getElementById('newBadge').offsetWidth; // 애니메이션 리셋
+      document.getElementById('newBadge').classList.add('show');
+    } else {
+      // 이미 하단 근처면 부드럽게 스크롤
+      setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    }
+  }
+
+
+  /* ── 새 번역 알림 배너 ── */
+  let userIsReading = false;  // 사용자가 위에서 읽는 중인지
+
+  // 스크롤 위치 감지 — 하단에서 150px 이상 위면 "읽는 중"
+  window.addEventListener('scroll', () => {
+    const distFromBottom = document.body.scrollHeight - window.scrollY - window.innerHeight;
+    userIsReading = distFromBottom > 150;
+    if (!userIsReading) {
+      document.getElementById('newBadge').classList.remove('show');
+    }
+  }, { passive: true });
+
+  function scrollToLatest() {
+    const latest = document.querySelector('.transcript-item.latest');
+    if (latest) latest.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('newBadge').classList.remove('show');
   }
 
   connect();
 </script>
 </body>
 </html>
-
