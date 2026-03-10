@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <meta name="theme-color" content="#ffffff"/>
   <title>✝ 설교 번역</title>
+  <!-- lang은 JS에서 동적으로 설정 -->
   <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap');
@@ -343,6 +344,7 @@
     <span id="sTxt" class="conn-txt">연결 중...</span>
   </div>
   <div class="topbar-right">
+    <div id="langBadge" style="font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:var(--accent-dim);color:var(--accent);font-family:'Noto Sans KR',sans-serif;font-weight:600;"></div>
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="테마 변경">
       <span id="themeIcon">🌙</span>
     </button>
@@ -360,7 +362,7 @@
   <!-- 대기 화면 -->
   <div id="waiting" class="waiting">
     <div class="cross-icon">✝</div>
-    <div class="waiting-txt">설교 번역을<br>기다리는 중입니다...</div>
+    <div id="waitingTxt" class="waiting-txt">번역을<br>기다리는 중입니다...</div>
   </div>
 
   <!-- 번역 스크립트 -->
@@ -408,6 +410,21 @@
   /* ── Pusher 키 설정 ── */
   const PUSHER_KEY     = '9970878443f485296baf';
   const PUSHER_CLUSTER = 'mt1';
+
+  /* ── 언어 설정 ── */
+  const LANG_INFO = {
+    ko: { flag:'🇰🇷', name:'한국어 번역', bible:'개역개정' },
+    en: { flag:'🇺🇸', name:'English Translation', bible:'NIV/ESV' },
+    tl: { flag:'🇵🇭', name:'Tagalog na Pagsasalin', bible:'MBB' },
+    es: { flag:'🇪🇸', name:'Traducción al Español', bible:'RV60' },
+    zh: { flag:'🇨🇳', name:'中文翻译', bible:'和合本' },
+  };
+  const params = new URLSearchParams(location.search);
+  const currentLang = params.get('lang') || 'ko';
+  const langInfo = LANG_INFO[currentLang] || LANG_INFO.ko;
+
+  // 페이지 제목 & 언어 표시 업데이트
+  document.title = `${langInfo.flag} ${langInfo.name}`;
 
   /* ── 테마 (기본: 라이트) ── */
   const savedTheme = localStorage.getItem('sermon-theme') || 'light';
@@ -480,8 +497,9 @@
       pusher.connection.bind('failed',       () => { setStatus('offline', '연결 실패'); scheduleRetry(); });
       pusher.connection.bind('unavailable',  () => { setStatus('offline', '서버 없음'); scheduleRetry(); });
 
-      const ch = pusher.subscribe('sermon');
-      ch.bind('translation', data => showText(data.translated || data.korean, data.direction));
+      // 언어별 채널 구독 (sermon-ko, sermon-en, sermon-tl 등)
+      const ch = pusher.subscribe(`sermon-${currentLang}`);
+      ch.bind('translation', data => showText(data.translated, data.lang));
     } catch(e) {
       setStatus('offline', '연결 오류');
       scheduleRetry();
@@ -636,6 +654,10 @@
     document.getElementById('clearModalBg').classList.remove('show');
   }
 
+  // 언어 배지 & 대기 텍스트 설정
+  document.getElementById('langBadge').textContent = langInfo.flag + ' ' + langInfo.name;
+  document.getElementById('waitingTxt').innerHTML = `${langInfo.flag} ${langInfo.name}<br>번역을 기다리는 중입니다...`;
+
   connect();
 </script>
 </body>
@@ -644,4 +666,4 @@
 
 
 
-
+ 
