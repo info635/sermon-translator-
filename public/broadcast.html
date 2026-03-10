@@ -40,7 +40,24 @@
     }
     .lang-bar-title {
       font-size:10px; color:var(--dim); letter-spacing:.15em; text-transform:uppercase;
-      margin-bottom:10px;
+      margin-bottom:8px;
+    }
+    /* 원본 언어 선택 */
+    .src-row {
+      display:flex; align-items:center; gap:10px; margin-bottom:12px;
+      padding-bottom:12px; border-bottom:1px solid var(--border);
+    }
+    .src-label { font-size:11px; color:var(--dim); white-space:nowrap; }
+    .src-btn {
+      display:flex; align-items:center; gap:6px;
+      padding:6px 16px; border-radius:8px; border:1px solid var(--border);
+      background:transparent; color:var(--dim);
+      font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+      transition:all .2s; white-space:nowrap;
+    }
+    .src-btn.active { background:rgba(96,165,250,.15); border-color:var(--blue); color:var(--blue); }
+    .src-arrow {
+      font-size:11px; color:var(--dim); padding:0 4px;
     }
     .lang-grid {
       display:grid; grid-template-columns:repeat(5, 1fr); gap:8px;
@@ -191,8 +208,18 @@
 
 <!-- 언어 선택 -->
 <div class="lang-bar">
-  <div class="lang-bar-title">번역할 언어 선택 (복수 선택 가능)</div>
-  <div class="lang-grid">
+
+  <!-- 원본 언어 -->
+  <div class="lang-bar-title">원본 언어 (설교 언어)</div>
+  <div class="src-row">
+    <button class="src-btn active" id="src-en" onclick="setSrcLang('en')">🇺🇸 English</button>
+    <button class="src-btn" id="src-ko" onclick="setSrcLang('ko')">🇰🇷 한국어</button>
+    <span class="src-arrow">→ 번역할 언어:</span>
+  </div>
+
+  <!-- 번역 대상 언어 -->
+  <div class="lang-bar-title">번역 언어 선택 (복수 선택 가능)</div>
+  <div class="lang-grid" id="targetGrid">
 
     <div class="lang-card active" data-lang="ko" onclick="toggleLang('ko')">
       <div class="lang-check">✓</div>
@@ -201,7 +228,7 @@
       <div class="lang-bible">개역개정</div>
     </div>
 
-    <div class="lang-card active" data-lang="en" onclick="toggleLang('en')">
+    <div class="lang-card" data-lang="en" onclick="toggleLang('en')">
       <div class="lang-check">✓</div>
       <div class="lang-flag">🇺🇸</div>
       <div class="lang-name">English</div>
@@ -344,8 +371,11 @@
     zh: { flag:'🇨🇳', name:'中文' },
   };
 
-  // 활성 언어 목록
-  let activeLangs = new Set(['ko', 'en']);
+  // 원본 언어
+  let srcLang = 'en';
+
+  // 활성 번역 언어 목록 (원본 언어 제외)
+  let activeLangs = new Set(['ko']);
   let isTranslating = false;
   let refText = '';
   let histArr = [];
@@ -353,7 +383,44 @@
   document.getElementById('baseUrl').textContent = BASE + '/viewer?lang=...';
 
   // ── 언어 토글 ──
+  function setSrcLang(lang) {
+    srcLang = lang;
+    // 버튼 스타일
+    document.getElementById('src-en').classList.toggle('active', lang === 'en');
+    document.getElementById('src-ko').classList.toggle('active', lang === 'ko');
+    // 음성 인식 언어 자동 전환 — 실행 중이면 재시작
+    const micLang = lang === 'ko' ? 'ko-KR' : 'en-US';
+    if (isListening) {
+      stopMic();
+      setTimeout(() => {
+        recognition = new SpeechRecognition();
+        recognition.lang = micLang;
+        startMic();
+      }, 300);
+    }
+    // 원본 언어는 번역 대상에서 비활성화
+    document.querySelectorAll('.lang-card').forEach(card => {
+      if (card.dataset.lang === lang) {
+        card.style.display = 'none'; // 원본 언어 카드 숨기기
+        activeLangs.delete(lang);
+      } else {
+        card.style.display = '';
+      }
+    });
+    // 번역 언어가 없으면 기본값 설정
+    if (activeLangs.size === 0) {
+      const defaultLang = lang === 'en' ? 'ko' : 'en';
+      activeLangs.add(defaultLang);
+      document.querySelector(`.lang-card[data-lang="${defaultLang}"]`)?.classList.add('active');
+    }
+    renderTabs();
+    renderLinks();
+    toast(`원본 언어: ${lang === 'ko' ? '🇰🇷 한국어' : '🇺🇸 English'}`);
+  }
+
   function toggleLang(lang) {
+    // 원본 언어는 토글 불가
+    if (lang === srcLang) return;
     const card = document.querySelector(`.lang-card[data-lang="${lang}"]`);
     if (activeLangs.has(lang)) {
       if (activeLangs.size <= 1) { toast('최소 1개 언어를 선택해야 합니다'); return; }
@@ -408,7 +475,8 @@
     document.getElementById(`pane-${lang}`)?.classList.add('active');
   }
 
-  // 초기 렌더
+  // 초기 렌더 — 기본 원본(영어) 카드 숨기기
+  document.querySelector('.lang-card[data-lang="en"]').style.display = 'none';
   renderTabs();
   renderLinks();
 
@@ -569,7 +637,8 @@
         body: JSON.stringify({
           text: textToSend,
           refText: refText || null,
-          langs: [...activeLangs]
+          langs: [...activeLangs],
+          srcLang: srcLang
         })
       });
       const d = await res.json();
