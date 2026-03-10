@@ -1,6 +1,6 @@
-{
+json{
   "rewrites": [
-    { "source": "/", "destination": "/public/broadcast.html" },
-    { "source": "/viewer", "destination": "/public/viewer.html" }
+    { "source": "/", "destination": "/broadcast.html" },
+    { "source": "/viewer", "destination": "/viewer.html" }
   ]
 }
