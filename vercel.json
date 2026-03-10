@@ -1,4 +1,5 @@
-json{
+{
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/", "destination": "/broadcast.html" },
     { "source": "/viewer", "destination": "/viewer.html" }
