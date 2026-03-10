@@ -1,305 +1,333 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="ko" data-theme="light">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="theme-color" content="#07070e"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="theme-color" content="#ffffff"/>
   <title>✝ 설교 번역</title>
   <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500&family=Noto+Serif+KR:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap');
 
-    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── 테마 변수 ── */
-    :root {
-      --fs: 24px;
-    }
+    /* ── CSS 변수 ── */
+    :root { --fs: 20px; }
 
-    /* 다크 모드 (기본) */
-    [data-theme="dark"] {
-      --bg:         #07070e;
-      --bg2:        #0e0e1a;
-      --surface:    rgba(255,255,255,.04);
-      --border:     rgba(255,255,255,.07);
-      --gold:       #c9a84c;
-      --gold-dim:   rgba(201,168,76,.15);
-      --text:       #ede5d4;
-      --text-prev:  #2a2a3e;
-      --text-sub:   #3a3a55;
-      --dim:        #4a5070;
-      --cross:      #14141f;
-      --shadow:     rgba(0,0,0,.6);
-      --status-bg:  rgba(10,10,20,.85);
-      --offline-bg: #3a0f0f;
-      --offline-bd: #6a2020;
-      --offline-tx: #fca5a5;
-      --overlay-bg: rgba(7,7,14,.93);
-    }
-
-    /* 라이트 모드 */
+    /* 라이트 모드 (기본) */
     [data-theme="light"] {
-      --bg:         #faf7f2;
-      --bg2:        #f0ebe1;
-      --surface:    rgba(0,0,0,.04);
-      --border:     rgba(0,0,0,.1);
-      --gold:       #9a6e20;
-      --gold-dim:   rgba(154,110,32,.12);
-      --text:       #1a1208;
-      --text-prev:  #c8bfa8;
-      --text-sub:   #b0a488;
-      --dim:        #8a7e68;
-      --cross:      #ddd4c0;
-      --shadow:     rgba(0,0,0,.12);
-      --status-bg:  rgba(250,247,242,.9);
-      --offline-bg: #fff0f0;
-      --offline-bd: #ffaaaa;
-      --offline-tx: #cc3333;
-      --overlay-bg: rgba(250,247,242,.95);
+      --bg:           #ffffff;
+      --bg-top:       rgba(255,255,255,.95);
+      --bg-bot:       rgba(255,255,255,.95);
+      --border:       #e8e2d9;
+      --border-light: #f0ebe3;
+      --accent:       #7a5520;
+      --accent-dim:   rgba(122,85,32,.08);
+      --text:         #1c1510;
+      --text-dim:     #9a8e80;
+      --text-faint:   #c8bfb5;
+      --dot-on:       #22c55e;
+      --dot-wait:     #f59e0b;
+      --offline-bg:   #fff1f1;
+      --offline-bd:   #fecaca;
+      --offline-tx:   #dc2626;
+      --overlay:      rgba(255,255,255,.96);
+      --cross:        #e8e0d5;
     }
 
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Noto Serif KR', 'Malgun Gothic', serif;
-      transition: background .35s, color .35s;
+    /* 다크 모드 */
+    [data-theme="dark"] {
+      --bg:           #0f0f14;
+      --bg-top:       rgba(15,15,20,.95);
+      --bg-bot:       rgba(15,15,20,.95);
+      --border:       rgba(255,255,255,.08);
+      --border-light: rgba(255,255,255,.04);
+      --accent:       #c9a84c;
+      --accent-dim:   rgba(201,168,76,.1);
+      --text:         #ede5d4;
+      --text-dim:     #5a6070;
+      --text-faint:   #2a2a3a;
+      --dot-on:       #4ade80;
+      --dot-wait:     #c9a84c;
+      --offline-bg:   #3a0f0f;
+      --offline-bd:   #7a2020;
+      --offline-tx:   #fca5a5;
+      --overlay:      rgba(10,10,16,.97);
+      --cross:        #1a1a24;
+    }
+
+    html {
       -webkit-text-size-adjust: 100%;
-      overflow-x: hidden;
+      text-size-adjust: 100%;
     }
 
     body {
       min-height: 100vh;
       min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif KR', Georgia, serif;
+      transition: background .3s, color .3s;
+      overflow-x: hidden;
     }
 
-    /* ── 상단 바 ── */
+    /* ═══════════════════════════
+       상단 바
+    ═══════════════════════════ */
     .topbar {
       position: fixed;
       top: 0; left: 0; right: 0;
-      top: env(safe-area-inset-top);
+      top: env(safe-area-inset-top, 0);
       height: 52px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 16px;
-      background: var(--status-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: var(--bg-top);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
       z-index: 100;
-      transition: background .35s, border-color .35s;
     }
 
-    /* 연결 상태 */
-    .conn-pill {
-      display: flex; align-items: center; gap: 7px;
-      padding: 5px 12px;
-      background: var(--surface);
-      border: 1px solid var(--border);
+    /* 연결 상태 칩 */
+    .conn-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
       border-radius: 20px;
-      transition: all .35s;
+      border: 1px solid var(--border);
+      background: var(--accent-dim);
     }
     .conn-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--dim); transition: all .4s; flex-shrink: 0;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-faint);
+      flex-shrink: 0;
+      transition: background .4s;
     }
-    .conn-dot.connected  { background: #4ade80; box-shadow: 0 0 7px #4ade80; animation: blink 2s infinite; }
-    .conn-dot.connecting { background: var(--gold); animation: blink .8s infinite; }
-    .conn-dot.offline    { background: #f87171; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .conn-txt { font-size: 11px; color: var(--dim); letter-spacing: .08em; font-family: 'Noto Sans KR', sans-serif; }
+    .conn-dot.connected  {
+      background: var(--dot-on);
+      box-shadow: 0 0 0 3px rgba(34,197,94,.15);
+      animation: pulse 2.5s infinite;
+    }
+    .conn-dot.connecting { background: var(--dot-wait); animation: pulse .9s infinite; }
+    .conn-dot.offline    { background: #ef4444; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
-    /* 오른쪽 버튼 그룹 */
-    .topbar-right { display: flex; align-items: center; gap: 8px; }
+    .conn-txt {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: .06em;
+      font-family: 'Noto Sans KR', sans-serif;
+      white-space: nowrap;
+    }
+
+    /* 오른쪽 버튼들 */
+    .topbar-right { display: flex; align-items: center; gap: 6px; }
 
     .icon-btn {
       width: 36px; height: 36px;
       border-radius: 10px;
-      background: var(--surface);
       border: 1px solid var(--border);
-      color: var(--dim);
-      font-size: 16px;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 17px;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
-      transition: all .2s;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
+      transition: background .2s;
     }
-    .icon-btn:active { transform: scale(.9); background: var(--gold-dim); }
+    .icon-btn:active { background: var(--accent-dim); }
 
-    /* 테마 토글 */
-    .theme-btn { font-size: 18px; }
-
-    /* ── 오프라인 배너 ── */
+    /* ═══════════════════════════
+       오프라인 배너
+    ═══════════════════════════ */
     .offline-bar {
       position: fixed;
-      top: calc(52px + env(safe-area-inset-top));
+      top: calc(52px + env(safe-area-inset-top, 0px));
       left: 0; right: 0;
+      padding: 8px 16px;
       background: var(--offline-bg);
       border-bottom: 1px solid var(--offline-bd);
       color: var(--offline-tx);
       font-size: 12px;
-      padding: 8px 16px;
       text-align: center;
-      display: none; z-index: 99;
       font-family: 'Noto Sans KR', sans-serif;
-      transition: background .35s;
+      display: none; z-index: 99;
     }
     .offline-bar.show { display: block; }
 
-    /* ── 메인 스크롤 영역 ── */
+    /* ═══════════════════════════
+       스크롤 영역
+    ═══════════════════════════ */
     .scroll-area {
-      flex: 1;
-      overflow-y: auto;
-      padding: 80px 0 40px;
+      padding-top: calc(52px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+      min-height: 100dvh;
       -webkit-overflow-scrolling: touch;
     }
 
-    .inner {
-      max-width: 680px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
-
-    /* ── 대기 화면 ── */
+    /* ═══════════════════════════
+       대기 화면
+    ═══════════════════════════ */
     .waiting {
       min-height: 60vh;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 16px; text-align: center;
+      gap: 14px; padding: 40px 24px;
     }
     .cross-icon {
-      font-size: 56px;
+      font-size: 52px;
       color: var(--cross);
-      transition: color .35s;
       line-height: 1;
     }
     .waiting-txt {
-      font-size: 16px;
-      color: var(--text-sub);
-      line-height: 1.9;
-      font-family: 'Noto Sans KR', sans-serif;
-      transition: color .35s;
-    }
-
-    /* ── 번역 텍스트 ── */
-    .main-text {
-      font-size: var(--fs);
-      line-height: 2.1;
-      color: var(--text);
-      word-break: keep-all;
-      letter-spacing: .015em;
-      padding: 8px 0 32px;
-      min-height: 50vh;
-      display: flex; align-items: center; justify-content: center;
-      text-align: center;
-      transition: color .35s;
-    }
-    .main-text.hidden { display: none; }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .appear { animation: fadeUp .5s cubic-bezier(.16,1,.3,1) forwards; }
-
-    /* ── 구분선 ── */
-    .divider {
-      height: 1px;
-      background: var(--border);
-      margin: 8px 0 24px;
-      transition: background .35s;
-    }
-
-    /* ── 이전 내용 ── */
-    .prev-section { padding-bottom: 48px; }
-    .prev-label {
-      font-size: 9px;
-      color: var(--text-sub);
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      text-align: center;
-      margin-bottom: 20px;
-      font-family: 'Noto Sans KR', sans-serif;
-      opacity: .5;
-    }
-    .prev-item {
-      color: var(--text-prev);
       font-size: 15px;
+      color: var(--text-dim);
       line-height: 1.9;
-      margin-bottom: 20px;
-      word-break: keep-all;
       text-align: center;
-      transition: color .35s;
+      font-family: 'Noto Sans KR', sans-serif;
     }
 
-    /* ── 하단 폰트 조절 바 ── */
+    /* ═══════════════════════════
+       번역 스크립트
+    ═══════════════════════════ */
+    .transcript {
+      padding: 0;
+    }
+
+    .transcript-item {
+      padding: 20px 20px 20px 20px;
+      border-bottom: 1px solid var(--border-light);
+      font-size: var(--fs);
+      line-height: 1.95;
+      word-break: keep-all;
+      text-align: left;
+      letter-spacing: -.01em;
+      transition: opacity .4s;
+    }
+
+    /* 최신 항목 — 완전히 선명 */
+    .transcript-item.latest {
+      opacity: 1;
+      color: var(--text);
+      background: var(--accent-dim);
+      border-left: 3px solid var(--accent);
+      padding-left: 17px;
+    }
+
+    /* 이전 항목 — 흐리게 */
+    .transcript-item:not(.latest) {
+      opacity: .8;
+      color: var(--text);
+    }
+
+    /* 새 항목 등장 애니메이션 */
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .appear { animation: slideIn .4s cubic-bezier(.2,.8,.4,1) both; }
+
+    /* 타임스탬프 */
+    .item-time {
+      font-size: 10px;
+      color: var(--text-faint);
+      font-family: 'Noto Sans KR', sans-serif;
+      margin-bottom: 6px;
+      letter-spacing: .04em;
+    }
+
+    /* ═══════════════════════════
+       하단 바 (글자 크기 + 테마)
+    ═══════════════════════════ */
     .bottom-bar {
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      bottom: env(safe-area-inset-bottom);
       padding: 10px 20px;
-      padding-bottom: max(10px, env(safe-area-inset-bottom));
-      background: var(--status-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+      background: var(--bg-bot);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      gap: 12px; z-index: 100;
-      transition: background .35s, border-color .35s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      z-index: 100;
     }
-    .fs-label { font-size: 11px; color: var(--dim); font-family: 'Noto Sans KR', sans-serif; }
+
+    .fs-group {
+      display: flex; align-items: center; gap: 8px;
+    }
+
     .fs-btn {
-      width: 40px; height: 40px;
-      border-radius: 10px;
-      background: var(--surface);
+      width: 42px; height: 42px;
+      border-radius: 12px;
       border: 1px solid var(--border);
-      color: var(--dim);
-      font-size: 14px; font-weight: 600;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 15px; font-weight: 600;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
-      transition: all .2s;
-      -webkit-tap-highlight-color: transparent;
       font-family: 'Noto Sans KR', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      transition: all .15s;
     }
-    .fs-btn:active { transform: scale(.88); background: var(--gold-dim); color: var(--gold); }
+    .fs-btn:active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 
     .fs-display {
-      min-width: 48px; text-align: center;
-      font-size: 13px; color: var(--dim);
+      font-size: 12px;
+      color: var(--text-faint);
       font-family: 'Noto Sans KR', sans-serif;
+      min-width: 36px;
+      text-align: center;
     }
 
-    /* ── 재연결 오버레이 ── */
+    .theme-toggle {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s;
+    }
+    .theme-toggle:active { background: var(--accent-dim); }
+
+    /* ═══════════════════════════
+       재연결 오버레이
+    ═══════════════════════════ */
     .reconnect-overlay {
       position: fixed; inset: 0;
-      background: var(--overlay-bg);
-      backdrop-filter: blur(8px);
+      background: var(--overlay);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       display: none; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 18px; z-index: 200;
-      font-family: 'Noto Sans KR', sans-serif;
-      transition: background .35s;
+      gap: 16px; z-index: 200;
     }
     .reconnect-overlay.show { display: flex; }
     .spinner {
-      width: 52px; height: 52px; border-radius: 50%;
+      width: 44px; height: 44px; border-radius: 50%;
       border: 3px solid var(--border);
-      border-top-color: var(--gold);
+      border-top-color: var(--accent);
       animation: spin 1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .reconnect-msg  { font-size: 15px; color: var(--dim); }
-    .reconnect-sub  { font-size: 12px; color: var(--gold); }
+    .reconnect-msg { font-size: 15px; color: var(--text-dim); font-family: 'Noto Sans KR', sans-serif; }
+    .reconnect-sub { font-size: 12px; color: var(--accent); font-family: 'Noto Sans KR', sans-serif; }
 
-    /* ── 스크롤바 ── */
-    ::-webkit-scrollbar { width: 3px; }
+    /* ═══════════════════════════
+       스크롤바
+    ═══════════════════════════ */
+    ::-webkit-scrollbar { width: 2px; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   </style>
 </head>
@@ -307,14 +335,14 @@
 
 <!-- 상단 바 -->
 <div class="topbar">
-  <div class="conn-pill">
+  <div class="conn-chip">
     <div id="sDot" class="conn-dot connecting"></div>
     <span id="sTxt" class="conn-txt">연결 중...</span>
   </div>
   <div class="topbar-right">
-    <div class="icon-btn theme-btn" onclick="toggleTheme()" title="다크/라이트 모드">
-      <span id="themeIcon">☀️</span>
-    </div>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="테마 변경">
+      <span id="themeIcon">🌙</span>
+    </button>
   </div>
 </div>
 
@@ -323,37 +351,28 @@
   📶 인터넷 연결이 끊겼습니다 — 자동으로 재연결합니다
 </div>
 
-<!-- 메인 스크롤 영역 -->
+<!-- 스크롤 영역 -->
 <div class="scroll-area">
-  <div class="inner">
 
-    <!-- 대기 -->
-    <div id="waiting" class="waiting">
-      <div class="cross-icon">✝</div>
-      <div class="waiting-txt">설교 번역을 기다리는 중입니다...</div>
-    </div>
-
-    <!-- 번역 텍스트 -->
-    <div id="mainTxt" class="main-text hidden"></div>
-
-    <!-- 이전 내용 -->
-    <div id="prevSec" style="display:none;">
-      <div class="divider"></div>
-      <div class="prev-section">
-        <div class="prev-label">이전 내용</div>
-        <div id="prevList"></div>
-      </div>
-    </div>
-
+  <!-- 대기 화면 -->
+  <div id="waiting" class="waiting">
+    <div class="cross-icon">✝</div>
+    <div class="waiting-txt">설교 번역을<br>기다리는 중입니다...</div>
   </div>
+
+  <!-- 번역 스크립트 -->
+  <div id="transcript" class="transcript" style="display:none;"></div>
+
 </div>
 
-<!-- 하단 폰트 조절 바 -->
+<!-- 하단 바 -->
 <div class="bottom-bar">
-  <button class="fs-btn" onclick="changeFontSize(-2)">A−</button>
-  <span class="fs-display" id="fsDisplay">24px</span>
-  <button class="fs-btn" onclick="changeFontSize(+2)">A+</button>
-  <span class="fs-label" style="margin-left:8px;">글자 크기</span>
+  <div class="fs-group">
+    <button class="fs-btn" onclick="changeFontSize(-2)" aria-label="글자 작게">A−</button>
+    <span class="fs-display" id="fsDisplay">20px</span>
+    <button class="fs-btn" onclick="changeFontSize(+2)" aria-label="글자 크게">A+</button>
+  </div>
+  <span style="font-size:11px;color:var(--text-faint);font-family:'Noto Sans KR',sans-serif;">글자 크기</span>
 </div>
 
 <!-- 재연결 오버레이 -->
@@ -364,24 +383,26 @@
 </div>
 
 <script>
-  /* ── 테마 ── */
-  const savedTheme = localStorage.getItem('sermon-theme') || 'dark';
-  setTheme(savedTheme);
+  /* ── Pusher 키 설정 ── */
+const PUSHER_KEY     = '9970878443f485296baf';      // ← 여기에 Pusher Key 입력
+  const PUSHER_CLUSTER = 'mt1';  // ← 여기에 Pusher Cluster 입력
 
-  function setTheme(t) {
+  /* ── 테마 (기본: 라이트) ── */
+  const savedTheme = localStorage.getItem('sermon-theme') || 'light';
+  applyTheme(savedTheme);
+
+  function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
     document.getElementById('themeIcon').textContent = t === 'dark' ? '☀️' : '🌙';
-    document.querySelector('meta[name="theme-color"]').content = t === 'dark' ? '#07070e' : '#faf7f2';
+    document.querySelector('meta[name="theme-color"]').content = t === 'dark' ? '#0f0f14' : '#ffffff';
     localStorage.setItem('sermon-theme', t);
   }
-
   function toggleTheme() {
-    const cur = document.documentElement.getAttribute('data-theme');
-    setTheme(cur === 'dark' ? 'light' : 'dark');
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   }
 
-  /* ── 폰트 크기 ── */
-  let fontSize = parseInt(localStorage.getItem('sermon-fs') || 24);
+  /* ── 글자 크기 ── */
+  let fontSize = parseInt(localStorage.getItem('sermon-fs') || 20);
   applyFontSize();
 
   function changeFontSize(d) {
@@ -389,60 +410,56 @@
     applyFontSize();
     localStorage.setItem('sermon-fs', fontSize);
   }
-
   function applyFontSize() {
     document.documentElement.style.setProperty('--fs', fontSize + 'px');
     document.getElementById('fsDisplay').textContent = fontSize + 'px';
   }
 
-  /* ── 마지막 번역 복원 ── */
-  const saved = localStorage.getItem('sermon-last');
-  if (saved) {
+  /* ── 이전 내용 복원 ── */
+  const savedItems = JSON.parse(localStorage.getItem('sermon-transcript') || '[]');
+  if (savedItems.length > 0) {
     document.getElementById('waiting').style.display = 'none';
-    const el = document.getElementById('mainTxt');
-    el.classList.remove('hidden');
-    el.textContent = saved;
+    document.getElementById('transcript').style.display = 'block';
+    savedItems.forEach((item, i) => {
+      appendItem(item, false, i === savedItems.length - 1);
+    });
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }), 50);
   }
 
-  /* ── Pusher 설정 ── */
-  const PUSHER_KEY     = '9970878443f485296baf';      // ← 여기에 Pusher Key 입력
-  const PUSHER_CLUSTER = 'mt1';  // ← 여기에 Pusher Cluster 입력
-
-  const prevTexts = [];
+  let allTexts = savedItems.slice();
   let pusher = null;
   let retryCount = 0;
   let retryTimer = null;
 
+  /* ── 상태 표시 ── */
   function setStatus(state, msg) {
     document.getElementById('sDot').className = 'conn-dot ' + state;
     document.getElementById('sTxt').textContent = msg;
   }
 
+  /* ── Pusher 연결 ── */
   function connect() {
     try {
       if (pusher) { try { pusher.disconnect(); } catch(e){} }
-
       pusher = new Pusher(PUSHER_KEY, {
         cluster: PUSHER_CLUSTER,
         forceTLS: true,
         activityTimeout: 30000,
         pongTimeout: 15000,
       });
-
-      pusher.connection.bind('connecting',    () => setStatus('connecting', '연결 중...'));
-      pusher.connection.bind('connected',     () => {
+      pusher.connection.bind('connecting',  () => setStatus('connecting', '연결 중...'));
+      pusher.connection.bind('connected',   () => {
         setStatus('connected', '실시간 연결됨');
         retryCount = 0;
         document.getElementById('reconnectOverlay').classList.remove('show');
         document.getElementById('offlineBar').classList.remove('show');
       });
-      pusher.connection.bind('disconnected',  () => { setStatus('offline', '연결 끊김'); scheduleRetry(); });
-      pusher.connection.bind('failed',        () => { setStatus('offline', '연결 실패'); scheduleRetry(); });
-      pusher.connection.bind('unavailable',   () => { setStatus('offline', '서버 응답 없음'); scheduleRetry(); });
+      pusher.connection.bind('disconnected', () => { setStatus('offline', '연결 끊김'); scheduleRetry(); });
+      pusher.connection.bind('failed',       () => { setStatus('offline', '연결 실패'); scheduleRetry(); });
+      pusher.connection.bind('unavailable',  () => { setStatus('offline', '서버 없음'); scheduleRetry(); });
 
       const ch = pusher.subscribe('sermon');
-      ch.bind('translation', data => showText(data.korean));
-
+      ch.bind('translation', data => showText(data.translated || data.korean, data.direction));
     } catch(e) {
       setStatus('offline', '연결 오류');
       scheduleRetry();
@@ -464,7 +481,6 @@
     retryTimer = setTimeout(connect, delay);
   }
 
-  /* 네트워크 상태 감지 */
   window.addEventListener('online',  () => {
     document.getElementById('offlineBar').classList.remove('show');
     retryCount = 0; clearTimeout(retryTimer); connect();
@@ -473,44 +489,66 @@
     document.getElementById('offlineBar').classList.add('show');
     setStatus('offline', '오프라인');
   });
-
-  /* 화면 복귀 시 재연결 */
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      if (!pusher || pusher.connection.state !== 'connected') {
-        retryCount = 0; clearTimeout(retryTimer); connect();
-      }
+    if (document.visibilityState === 'visible' &&
+        (!pusher || pusher.connection.state !== 'connected')) {
+      retryCount = 0; clearTimeout(retryTimer); connect();
     }
   });
 
-  /* ── 번역 텍스트 표시 ── */
-  function showText(korean, direction) {
-    const el = document.getElementById('mainTxt');
+  /* ── 번역 항목 추가 ── */
+  function appendItem(text, animate, isLatest) {
+    const wrap = document.createElement('div');
+    wrap.className = 'transcript-item' + (isLatest ? ' latest' : '') + (animate ? ' appear' : '');
 
-    if (el.textContent) {
-      prevTexts.unshift(el.textContent);
-      if (prevTexts.length > 5) prevTexts.pop();
-      document.getElementById('prevSec').style.display = 'block';
-      document.getElementById('prevList').innerHTML =
-        prevTexts.map(t => `<div class="prev-item">${t}</div>`).join('');
+    // 타임스탬프
+    if (animate) {
+      const ts = document.createElement('div');
+      ts.className = 'item-time';
+      ts.textContent = new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+      wrap.appendChild(ts);
     }
 
-    document.getElementById('waiting').style.display = 'none';
-    el.classList.remove('hidden');
-    el.textContent = korean;
-    // 번역 방향 표시
-    const badge = direction === 'ko-en' ? '🇰🇷 → 🇺🇸' : '🇺🇸 → 🇰🇷';
-    document.getElementById('sTxt').textContent = '실시간 연결됨 · ' + badge;
-    el.classList.remove('appear');
-    void el.offsetWidth;
-    el.classList.add('appear');
+    const txt = document.createElement('div');
+    txt.textContent = text;
+    wrap.appendChild(txt);
 
-    localStorage.setItem('sermon-last', korean);
-    localStorage.setItem('sermon-last-dir', direction || 'en-ko');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('transcript').appendChild(wrap);
+    return wrap;
+  }
+
+  /* ── 번역 텍스트 표시 ── */
+  function showText(text, direction) {
+    document.getElementById('waiting').style.display = 'none';
+    const transcript = document.getElementById('transcript');
+    transcript.style.display = 'block';
+
+    // 기존 latest 제거
+    const prevLatest = transcript.querySelector('.latest');
+    if (prevLatest) {
+      prevLatest.classList.remove('latest');
+      prevLatest.style.borderLeft = '';
+      prevLatest.style.paddingLeft = '';
+    }
+
+    // 새 항목 추가
+    const div = appendItem(text, true, true);
+
+    // 상태 업데이트
+    const badge = direction === 'ko-en' ? '🇰🇷→🇺🇸' : '🇺🇸→🇰🇷';
+    setStatus('connected', `실시간 연결됨 · ${badge}`);
+
+    // 저장
+    allTexts.push(text);
+    if (allTexts.length > 50) allTexts.shift();
+    localStorage.setItem('sermon-transcript', JSON.stringify(allTexts));
+
+    // 새 항목으로 스크롤
+    setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
   }
 
   connect();
 </script>
 </body>
 </html>
+
