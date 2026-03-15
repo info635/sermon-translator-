@@ -750,18 +750,35 @@
     retryTimer = setTimeout(connect, delay);
   }
 
-  window.addEventListener('online',  () => {
+  /* ── Wake Lock — 화면 자동 꺼짐 방지 ── */
+  let wakeLock = null;
+
+  async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+      if (wakeLock) return; // 이미 활성
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch(e) { /* 권한 거부 등 무시 */ }
+  }
+
+  window.addEventListener('online', async () => {
     document.getElementById('offlineBar').classList.remove('show');
+    await requestWakeLock();
     retryCount = 0; clearTimeout(retryTimer); connect();
   });
   window.addEventListener('offline', () => {
     document.getElementById('offlineBar').classList.add('show');
     setStatus('offline', t('offline'));
   });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && (!pusher || pusher.connection.state !== 'connected')) {
-      retryCount = 0; clearTimeout(retryTimer); connect();
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') {
+      await requestWakeLock();
+      if (!pusher || pusher.connection.state !== 'connected') {
+        retryCount = 0; clearTimeout(retryTimer); connect();
+      }
     }
+
   });
 
   /* ── 항목 추가 ── */
@@ -864,11 +881,13 @@
 
   /* ── 초기화 ── */
   setUILang(uiLang);
-  // 자동 스크롤 버튼 초기 상태
   document.getElementById('scrollToggleBtn').classList.add('active');
+  requestWakeLock(); // 화면 꺼짐 방지 시작
   connect();
 </script>
 </body>
 </html>
+
+
 
 
