@@ -6,252 +6,563 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="theme-color" content="#141413"/>
-  <title>✝ 설교 번역</title>
+  <meta name="theme-color" content="#111110"/>
+  <title>WORSHIPONAIR</title>
   <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500&family=Noto+Serif+KR:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    :root { --fs: 20px; }
+    :root { --fs:22px; --topbar:56px; --bottombar:72px; }
 
+    /* ── THEMES ── */
     [data-theme="dark"] {
-      --bg:        #141413;
-      --surface:   #1c1c1a;
-      --border:    rgba(255,255,255,.09);
-      --border2:   rgba(255,255,255,.04);
-      --text:      #e8e6e0;
-      --text2:     #787672;
-      --text3:     #3a3a38;
-      --accent:    #d97706;
-      --accent-bg: rgba(217,119,6,.1);
-      --accent-l:  rgba(217,119,6,.35);
-      --cross:     #2a2a28;
-      --overlay:   rgba(20,20,19,.97);
-      --meta-bg:   #1c1c1a;
+      --bg:         #111110;
+      --surface:    #1a1a18;
+      --surface2:   #222220;
+      --border:     rgba(255,255,255,.08);
+      --text:       #f0ede6;
+      --text2:      #9a9790;
+      --text3:      #444440;
+      --accent:     #e08c1a;
+      --accent-dim: rgba(224,140,26,.12);
+      --accent-bar: rgba(224,140,26,.5);
+      --bar-bg:     rgba(26,26,24,.92);
+      --overlay:    rgba(17,17,16,.96);
     }
     [data-theme="light"] {
-      --bg:        #f9f9f8;
-      --surface:   #ffffff;
-      --border:    #e8e8e6;
-      --border2:   #f2f2f0;
-      --text:      #1a1a18;
-      --text2:     #6b6b68;
-      --text3:     #adadaa;
-      --accent:    #d97706;
-      --accent-bg: rgba(217,119,6,.06);
-      --accent-l:  rgba(217,119,6,.3);
-      --cross:     #e8e8e4;
-      --overlay:   rgba(249,249,248,.97);
-      --meta-bg:   #ffffff;
+      --bg:         #f8f7f4;
+      --surface:    #ffffff;
+      --surface2:   #f0ede8;
+      --border:     rgba(0,0,0,.08);
+      --text:       #18170f;
+      --text2:      #6a6860;
+      --text3:      #c0bdb5;
+      --accent:     #c97005;
+      --accent-dim: rgba(201,112,5,.08);
+      --accent-bar: rgba(201,112,5,.4);
+      --bar-bg:     rgba(248,247,244,.94);
+      --overlay:    rgba(248,247,244,.97);
     }
 
-    html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
 
     body {
-      background:var(--bg); color:var(--text);
-      font-family:'Noto Sans KR','DM Sans',sans-serif;
-      min-height:100vh; min-height:100dvh;
-      overflow-x:hidden; -webkit-font-smoothing:antialiased;
-      transition:background .25s, color .25s;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif KR', Georgia, serif;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      transition: background .3s, color .3s;
     }
 
-    /* TOP BAR */
+    /* ════════════════════════════
+       TOP BAR
+    ════════════════════════════ */
     .topbar {
-      position:fixed; top:0; left:0; right:0;
-      top:env(safe-area-inset-top,0);
-      height:54px;
-      display:flex; align-items:center; justify-content:space-between;
-      padding:0 16px;
-      background:var(--meta-bg);
-      border-bottom:1px solid var(--border);
-      z-index:100;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      top: env(safe-area-inset-top, 0px);
+      height: var(--topbar);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 10px;
+      background: var(--bar-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
     }
 
-    /* Logo in viewer */
-    .vlogo { display:flex; align-items:center; gap:9px; }
-    .vlogo img { width:30px; height:30px; border-radius:7px; object-fit:cover; }
-    .vlogo-text { display:flex; flex-direction:column; gap:1px; }
-    .vlogo-title { font-size:12px; font-weight:700; color:var(--text); letter-spacing:.06em; text-transform:uppercase; line-height:1; }
-    .vlogo-sub { font-size:8px; color:var(--text3); letter-spacing:.06em; line-height:1; }
+    /* 로고 */
+    .tb-logo { display:flex; align-items:center; gap:9px; flex-shrink:0; }
+    .tb-logo img { width:32px; height:32px; border-radius:8px; object-fit:cover; }
+    .tb-logo-txt { display:flex; flex-direction:column; gap:1px; }
+    .tb-logo-title { font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; line-height:1; color:var(--text); font-family:'Noto Sans KR',sans-serif; }
+    .tb-logo-sub { font-size:8px; color:var(--text3); letter-spacing:.05em; line-height:1; font-family:'Noto Sans KR',sans-serif; }
 
-    .tb-right { display:flex; align-items:center; gap:8px; }
+    /* 언어 배지 */
+    .lang-badge {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-bar);
+      font-size: 12px; font-weight: 600;
+      color: var(--accent);
+      font-family: 'Noto Sans KR', sans-serif;
+      white-space: nowrap;
+    }
 
-    /* UI lang toggle */
-    .ui-lang { display:flex; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:2px; gap:2px; }
-    .ui-lang-btn { padding:3px 9px; border-radius:5px; border:none; background:transparent; color:var(--text2); font-size:11px; font-weight:500; cursor:pointer; font-family:inherit; transition:all .15s; }
-    .ui-lang-btn.on { background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    /* 연결 상태 */
+    .conn-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      font-size: 11px;
+      color: var(--text2);
+      font-family: 'Noto Sans KR', sans-serif;
+      white-space: nowrap;
+    }
+    .conn-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text3); flex-shrink:0;
+      transition: background .3s;
+    }
+    .conn-dot.connected  { background: #34d058; animation: cpulse 2.5s infinite; }
+    .conn-dot.connecting { background: var(--accent); animation: cpulse .9s infinite; }
+    .conn-dot.offline    { background: #f85149; }
+    @keyframes cpulse { 0%,100%{opacity:1} 50%{opacity:.25} }
 
-    #langBadge { font-size:12px; font-weight:500; color:var(--accent); padding:3px 8px; border-radius:6px; background:var(--accent-bg); }
+    /* 오른쪽 버튼들 */
+    .tb-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
 
-    .conn-row { display:flex; align-items:center; gap:6px; }
-    .conn-dot { width:6px; height:6px; border-radius:50%; background:var(--text3); flex-shrink:0; transition:background .3s; }
-    .conn-dot.connected  { background:#22c55e; animation:dpulse 2.5s infinite; }
-    .conn-dot.connecting { background:#d97706; animation:dpulse .9s infinite; }
-    .conn-dot.offline    { background:#ef4444; }
-    @keyframes dpulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .conn-txt { font-size:11px; color:var(--text3); font-weight:300; }
+    /* UI 언어 */
+    .ui-seg {
+      display: flex;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px; gap: 2px;
+    }
+    .ui-seg-btn {
+      padding: 4px 10px;
+      border-radius: 6px; border: none;
+      background: transparent;
+      color: var(--text2);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer; font-family: 'Noto Sans KR',sans-serif;
+      transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ui-seg-btn.on {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    }
 
-    .tb-btn { width:32px; height:32px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--text2); font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background .15s; }
-    .tb-btn:active { background:var(--accent-bg); }
+    /* 테마 + 삭제 버튼 */
+    .icon-btn {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s;
+    }
+    .icon-btn:active { background: var(--accent-dim); }
 
-    /* OFFLINE BANNER */
-    .offline-bar { position:fixed; top:calc(54px + env(safe-area-inset-top,0px)); left:0; right:0; background:#1c1600; border-bottom:1px solid #3d2e00; color:#fbbf24; font-size:12px; text-align:center; padding:7px 16px; font-family:inherit; display:none; z-index:99; }
-    [data-theme="light"] .offline-bar { background:#fefce8; border-color:#fde68a; color:#92400e; }
-    .offline-bar.show { display:block; }
+    /* ════════════════════════════
+       OFFLINE BANNER
+    ════════════════════════════ */
+    .offline-bar {
+      position: fixed;
+      top: calc(var(--topbar) + env(safe-area-inset-top, 0px));
+      left: 0; right: 0;
+      background: #2a1800;
+      border-bottom: 1px solid #5a3800;
+      color: #fbbf24;
+      font-size: 12px; text-align: center;
+      padding: 8px 16px;
+      font-family: 'Noto Sans KR',sans-serif;
+      display: none; z-index: 99;
+    }
+    [data-theme="light"] .offline-bar { background:#fffbeb; border-color:#fde68a; color:#92400e; }
+    .offline-bar.show { display: block; }
 
-    /* SCROLL */
+    /* ════════════════════════════
+       SCROLL AREA
+    ════════════════════════════ */
     .scroll-area {
-      padding-top:calc(54px + env(safe-area-inset-top,0px));
-      padding-bottom:calc(68px + env(safe-area-inset-bottom,0px));
-      min-height:100dvh;
+      padding-top: calc(var(--topbar) + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px));
+      min-height: 100dvh;
     }
 
-    /* WAITING */
-    .waiting { min-height:65vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:40px 24px; }
-    .cross-icon { font-size:34px; color:var(--cross); line-height:1; }
-    .waiting-txt { font-size:15px; color:var(--text3); text-align:center; line-height:2.2; font-weight:300; }
-
-    /* TRANSCRIPT */
-    .transcript { padding:0; }
-
-    .transcript-item {
-      padding:20px 20px;
-      border-bottom:1px solid var(--border2);
-      font-size:var(--fs); line-height:2;
-      word-break:break-word; overflow-wrap:break-word;
-      transition:opacity .3s;
+    /* ════════════════════════════
+       WAITING STATE
+    ════════════════════════════ */
+    .waiting {
+      min-height: 70dvh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; padding: 48px 32px;
     }
-    /* 최신: 왼쪽 강조선 */
-    .transcript-item.latest {
-      background:var(--accent-bg);
-      border-left:2px solid var(--accent-l);
-      padding-left:18px;
+    .waiting-icon {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
     }
-    /* 이전: 흐림 없음 */
-    .transcript-item:not(.latest) { opacity:1; }
+    .waiting-title {
+      font-size: 18px; font-weight: 500;
+      color: var(--text);
+      text-align: center; line-height: 1.6;
+      font-family: 'Noto Sans KR',sans-serif;
+    }
+    .waiting-sub {
+      font-size: 13px;
+      color: var(--text2);
+      text-align: center; line-height: 1.8;
+      font-family: 'Noto Sans KR',sans-serif;
+      font-weight: 300;
+    }
+    /* pulse ring */
+    .pulse-ring {
+      position: relative;
+      width: 12px; height: 12px;
+    }
+    .pulse-ring::before, .pulse-ring::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .pulse-ring::before { animation: ring 2s infinite; }
+    .pulse-ring::after  { animation: ring 2s .4s infinite; }
+    @keyframes ring {
+      0%   { transform:scale(1); opacity:.8; }
+      100% { transform:scale(3); opacity:0; }
+    }
 
-    .item-time { font-size:10px; color:var(--text3); font-weight:300; margin-bottom:8px; letter-spacing:.04em; }
+    /* ════════════════════════════
+       TRANSCRIPT — reading-optimized
+    ════════════════════════════ */
+    .transcript { padding: 0; }
 
-    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-    .appear { animation:fadeUp .3s ease both; }
+    .t-item {
+      padding: 20px 20px 22px;
+      border-bottom: 1px solid var(--border);
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
 
-    /* BOTTOM BAR */
+    /* 최신 항목 */
+    .t-item.latest {
+      background: var(--accent-dim);
+      border-left: 3px solid var(--accent);
+      padding-left: 17px;
+    }
+
+    .t-body {
+      font-size: var(--fs);
+      line-height: 1.95;
+      color: var(--text);
+      letter-spacing: -.01em;
+    }
+
+    .t-time {
+      font-size: 10px;
+      color: var(--text3);
+      font-family: 'Noto Sans KR',sans-serif;
+      font-weight: 300;
+      letter-spacing: .04em;
+      margin-bottom: 8px;
+    }
+
+    .t-label {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px;
+      color: var(--accent);
+      font-family: 'Noto Sans KR',sans-serif;
+      font-weight: 500;
+      margin-bottom: 6px;
+      opacity: .8;
+    }
+
+    @keyframes slideUp {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:none; }
+    }
+    .appear { animation: slideUp .35s cubic-bezier(.2,.8,.3,1) both; }
+
+    /* ════════════════════════════
+       BOTTOM BAR
+    ════════════════════════════ */
     .bottom-bar {
-      position:fixed; bottom:0; left:0; right:0;
-      height:calc(52px + env(safe-area-inset-bottom,0px));
-      padding:0 18px; padding-bottom:env(safe-area-inset-bottom,0px);
-      background:var(--meta-bg); border-top:1px solid var(--border);
-      display:flex; align-items:center; gap:10px; z-index:100;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px));
+      padding: 0 16px;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: var(--bar-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      gap: 12px;
     }
-    .fs-wrap { display:flex; align-items:center; gap:1px; background:var(--bg); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-    .fs-btn { width:38px; height:36px; border:none; background:transparent; color:var(--text2); font-size:13px; font-weight:500; display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent; transition:background .15s; }
-    .fs-btn:active { background:var(--accent-bg); color:var(--accent); }
-    .fs-div { width:1px; height:20px; background:var(--border); flex-shrink:0; }
-    .fs-val { font-size:11px; color:var(--text3); min-width:28px; text-align:center; padding:0 4px; }
-    .bb-r { margin-left:auto; }
-    .bb-btn { width:34px; height:34px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--text2); font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background .15s; }
-    .bb-btn:active { background:var(--accent-bg); }
 
-    /* NEW BADGE */
-    .new-badge {
-      position:fixed; bottom:calc(60px + env(safe-area-inset-bottom,0px));
-      left:50%; transform:translateX(-50%) translateY(10px);
-      background:var(--accent); color:#fff; font-size:12px; font-weight:500;
-      padding:7px 16px; border-radius:20px; cursor:pointer;
-      opacity:0; transition:opacity .2s, transform .2s;
-      pointer-events:none; z-index:101; white-space:nowrap;
-      box-shadow:0 4px 12px rgba(0,0,0,.3);
-      -webkit-tap-highlight-color:transparent;
+    /* 글자 크기 컨트롤 — 큼직하게 */
+    .fs-ctrl {
+      display: flex; align-items: center;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      height: 44px;
     }
-    .new-badge.show { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+    .fs-btn {
+      width: 48px; height: 44px;
+      border: none; background: transparent;
+      color: var(--text); font-family: 'Noto Sans KR',sans-serif;
+      font-size: 16px; font-weight: 500;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s;
+      user-select: none;
+    }
+    .fs-btn:active { background: var(--accent-dim); color: var(--accent); }
+    .fs-mid {
+      width: 1px; height: 24px; background: var(--border); flex-shrink:0;
+    }
+    .fs-val {
+      width: 42px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text2);
+      font-family: 'Noto Sans KR',sans-serif;
+    }
 
-    /* CLEAR MODAL */
-    .cm-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:none; align-items:center; justify-content:center; z-index:400; padding:24px 24px calc(90px + env(safe-area-inset-bottom,0px)); }
-    .cm-bg.show { display:flex; }
-    .cm { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:28px 22px 20px; width:100%; max-width:290px; text-align:center; box-shadow:0 16px 40px rgba(0,0,0,.4); }
-    .cm-icon { font-size:28px; margin-bottom:12px; }
-    .cm-title { font-size:15px; font-weight:500; color:var(--text); margin-bottom:8px; }
-    .cm-desc { font-size:13px; color:var(--text2); line-height:1.7; margin-bottom:20px; font-weight:300; }
-    .cm-btns { display:flex; gap:8px; }
-    .cm-cancel { flex:1; padding:11px; border-radius:10px; border:1px solid var(--border); background:transparent; color:var(--text2); font-size:13px; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-    .cm-ok { flex:1; padding:11px; border-radius:10px; border:none; background:var(--accent); color:#fff; font-size:13px; font-weight:500; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    /* 하단 우측 버튼 그룹 */
+    .bb-actions { display:flex; align-items:center; gap:8px; }
+    .bb-btn {
+      width: 44px; height: 44px;
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text2);
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s;
+    }
+    .bb-btn:active { background: var(--accent-dim); }
 
-    /* RECONNECT */
-    .rc-overlay { position:fixed; inset:0; background:var(--overlay); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:200; }
-    .rc-overlay.show { display:flex; }
-    .spinner { width:32px; height:32px; border-radius:50%; border:2px solid var(--border2); border-top-color:var(--accent); animation:spin 1s linear infinite; }
+    /* ════════════════════════════
+       NEW TRANSLATION TOAST
+    ════════════════════════════ */
+    .new-toast {
+      position: fixed;
+      bottom: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px) + 12px);
+      left: 50%;
+      transform: translateX(-50%) translateY(6px);
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px; font-weight: 600;
+      font-family: 'Noto Sans KR',sans-serif;
+      padding: 10px 20px;
+      border-radius: 24px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity .22s, transform .22s;
+      pointer-events: none;
+      z-index: 101;
+      white-space: nowrap;
+      box-shadow: 0 6px 20px rgba(0,0,0,.35);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .new-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    /* ════════════════════════════
+       CLEAR MODAL
+    ════════════════════════════ */
+    .modal-bg {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 300;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .modal-bg.show { display: flex; }
+
+    .modal-sheet {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      padding: 12px 20px 28px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .modal-handle {
+      width: 36px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+    .modal-icon { font-size: 32px; text-align:center; margin-bottom:12px; }
+    .modal-title {
+      font-size: 17px; font-weight: 600;
+      color: var(--text); text-align:center;
+      margin-bottom: 8px;
+      font-family: 'Noto Sans KR',sans-serif;
+    }
+    .modal-desc {
+      font-size: 14px; color: var(--text2);
+      text-align:center; line-height: 1.7;
+      margin-bottom: 24px;
+      font-family: 'Noto Sans KR',sans-serif;
+      font-weight: 300;
+    }
+    .modal-btns { display:flex; gap:10px; }
+    .modal-cancel {
+      flex: 1; padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text2);
+      font-size: 15px; font-family: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .modal-confirm {
+      flex: 1; padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: #f85149;
+      color: #fff;
+      font-size: 15px; font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ════════════════════════════
+       RECONNECT OVERLAY
+    ════════════════════════════ */
+    .rc-overlay {
+      position: fixed; inset: 0;
+      background: var(--overlay);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px; z-index: 200;
+    }
+    .rc-overlay.show { display: flex; }
+    .rc-spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+    }
     @keyframes spin { to{transform:rotate(360deg)} }
-    .rc-msg { font-size:14px; color:var(--text2); font-weight:300; }
-    .rc-sub { font-size:12px; color:var(--accent); }
+    .rc-msg  { font-size: 15px; color: var(--text2); font-family:'Noto Sans KR',sans-serif; }
+    .rc-sub  { font-size: 12px; color: var(--accent); font-family:'Noto Sans KR',sans-serif; }
 
-    ::-webkit-scrollbar { width:0; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
   </style>
 </head>
 <body>
 
+<!-- TOP BAR -->
 <div class="topbar">
-  <div class="vlogo">
+  <div class="tb-logo">
     <img src="data:image/png;base64,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" alt="logo"/>
-    <div class="vlogo-text">
-      <span class="vlogo-title">WORSHIPONAIR</span>
-      <span class="vlogo-sub">Sermon Translator</span>
+    <div class="tb-logo-txt">
+      <span class="tb-logo-title">WORSHIPONAIR</span>
+      <span class="tb-logo-sub">Sermon Translator</span>
     </div>
   </div>
+
+  <div class="lang-badge" id="langBadge"></div>
+
   <div class="tb-right">
-    <div class="conn-row">
-      <div id="sDot" class="conn-dot connecting"></div>
-      <span id="sTxt" class="conn-txt">...</span>
+    <div class="conn-pill">
+      <div class="conn-dot connecting" id="sDot"></div>
+      <span id="sTxt">...</span>
     </div>
-    <div id="langBadge"></div>
-    <div class="ui-lang">
-      <button class="ui-lang-btn on" id="ui-ko" onclick="setUILang('ko')">한국어</button>
-      <button class="ui-lang-btn"   id="ui-en" onclick="setUILang('en')">EN</button>
+    <div class="ui-seg">
+      <button class="ui-seg-btn on" id="ui-ko" onclick="setUILang('ko')">한국어</button>
+      <button class="ui-seg-btn"   id="ui-en" onclick="setUILang('en')">EN</button>
     </div>
-    <button class="tb-btn" onclick="toggleTheme()"><span id="themeIcon">☀️</span></button>
+    <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
   </div>
 </div>
 
-<div id="offlineBar" class="offline-bar" data-ko="인터넷 연결이 끊겼습니다 — 자동으로 재연결합니다" data-en="Internet disconnected — reconnecting automatically">인터넷 연결이 끊겼습니다 — 자동으로 재연결합니다</div>
+<!-- OFFLINE BANNER -->
+<div class="offline-bar" id="offlineBar"></div>
 
+<!-- MAIN SCROLL AREA -->
 <div class="scroll-area">
-  <div id="waiting" class="waiting">
-    <div class="cross-icon">✝</div>
-    <div id="waitingTxt" class="waiting-txt"></div>
+
+  <!-- 대기 화면 -->
+  <div class="waiting" id="waiting">
+    <div class="waiting-icon">✝</div>
+    <div class="waiting-title" id="waitingTitle"></div>
+    <div class="waiting-sub" id="waitingSub"></div>
+    <div class="pulse-ring"></div>
   </div>
-  <div id="transcript" class="transcript" style="display:none;"></div>
+
+  <!-- 번역 목록 -->
+  <div class="transcript" id="transcript" style="display:none;"></div>
+
 </div>
 
+<!-- BOTTOM BAR -->
 <div class="bottom-bar">
-  <div class="fs-wrap">
-    <button class="fs-btn" onclick="changeFontSize(-2)">A−</button>
-    <div class="fs-div"></div>
-    <span class="fs-val" id="fsDisplay">20</span>
-    <div class="fs-div"></div>
-    <button class="fs-btn" onclick="changeFontSize(+2)">A+</button>
+  <!-- 글자 크기 -->
+  <div class="fs-ctrl">
+    <button class="fs-btn" onclick="changeFontSize(-2)" aria-label="글자 작게">A−</button>
+    <div class="fs-mid"></div>
+    <span class="fs-val" id="fsVal">22</span>
+    <div class="fs-mid"></div>
+    <button class="fs-btn" onclick="changeFontSize(+2)" aria-label="글자 크게">A+</button>
   </div>
-  <div class="bb-r">
+
+  <!-- 우측 버튼 -->
+  <div class="bb-actions">
+    <button class="bb-btn" onclick="scrollToLatest()" id="scrollBtn" title="최신으로">↓</button>
     <button class="bb-btn" onclick="showClearModal()">🗑️</button>
   </div>
 </div>
 
-<div id="newBadge" class="new-badge" onclick="scrollToLatest()"></div>
+<!-- 새 번역 토스트 -->
+<div class="new-toast" id="newToast" onclick="scrollToLatest()"></div>
 
-<div class="cm-bg" id="cmBg" onclick="hideClearModal(event)">
-  <div class="cm">
-    <div class="cm-icon">🗑️</div>
-    <div class="cm-title" id="cmTitle"></div>
-    <div class="cm-desc" id="cmDesc"></div>
-    <div class="cm-btns">
-      <button class="cm-cancel" id="cmCancel" onclick="hideClearModal()">취소</button>
-      <button class="cm-ok"     id="cmOk"     onclick="clearTranscript()">삭제</button>
+<!-- 삭제 확인 모달 (bottom sheet) -->
+<div class="modal-bg" id="modalBg" onclick="hideModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-icon">🗑️</div>
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-desc"  id="modalDesc"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel"  id="modalCancel"  onclick="hideModal()"></button>
+      <button class="modal-confirm" id="modalConfirm" onclick="clearAll()"></button>
     </div>
   </div>
 </div>
 
-<div id="rcOverlay" class="rc-overlay">
-  <div class="spinner"></div>
+<!-- 재연결 오버레이 -->
+<div class="rc-overlay" id="rcOverlay">
+  <div class="rc-spinner"></div>
   <div class="rc-msg" id="rcMsg"></div>
-  <div id="rcSub" class="rc-sub"></div>
+  <div class="rc-sub" id="rcSub"></div>
 </div>
 
 <script>
@@ -259,195 +570,276 @@
   const PUSHER_KEY     = '9970878443f485296baf';
   const PUSHER_CLUSTER = 'mt1';
 
-
+  /* ── 언어 정보 ── */
   const LANG_INFO = {
-    ko:{flag:'🇰🇷',name:'한국어',nameEn:'Korean'},
-    en:{flag:'🇺🇸',name:'English',nameEn:'English'},
-    tl:{flag:'🇵🇭',name:'Tagalog',nameEn:'Tagalog'},
-    es:{flag:'🇪🇸',name:'Español',nameEn:'Spanish'},
-    zh:{flag:'🇨🇳',name:'中文',nameEn:'Chinese'},
+    ko:    { flag:'🇰🇷', name:'한국어',  nameEn:'Korean'   },
+    en:    { flag:'🇺🇸', name:'English', nameEn:'English'  },
+    es:    { flag:'🇪🇸', name:'Español', nameEn:'Spanish'  },
+    'zh-cn':{ flag:'🇨🇳', name:'普通话',  nameEn:'Mandarin' },
+    'zh-hk':{ flag:'🇭🇰', name:'廣東話',  nameEn:'Cantonese'},
+    fa:    { flag:'🇮🇷', name:'فارسی',   nameEn:'Persian'  },
+    pa:    { flag:'🇮🇳', name:'ਪੰਜਾਬੀ',  nameEn:'Punjabi'  },
   };
+
   const params      = new URLSearchParams(location.search);
   const currentLang = params.get('lang') || 'ko';
   const langInfo    = LANG_INFO[currentLang] || LANG_INFO.ko;
+  document.title    = langInfo.flag + ' WORSHIPONAIR';
 
-  document.title = langInfo.flag + ' ' + langInfo.name;
-
-  // ── UI 언어 ──
+  /* ── 다국어 텍스트 ── */
   let uiLang = localStorage.getItem('viewer-ui-lang') || 'ko';
 
   const T = {
-    connecting:  {ko:'연결 중...',      en:'Connecting...'},
-    connected:   {ko:'실시간 연결',     en:'Live'},
-    disconnected:{ko:'연결 끊김',       en:'Disconnected'},
-    failed:      {ko:'연결 실패',       en:'Failed'},
-    unavailable: {ko:'서버 없음',       en:'Unavailable'},
-    offline:     {ko:'오프라인',        en:'Offline'},
-    retryFail:   {ko:'새로고침 해주세요',en:'Please refresh'},
-    waiting:     {ko:'번역을\n기다리는 중입니다...', en:'Waiting for\ntranslation...'},
-    newBadge:    {ko:'↓ 새 번역',       en:'↓ New translation'},
-    connLost:    {ko:'연결이 끊겼습니다',en:'Connection lost'},
-    retrying:    {ko:'번째 시도 (',      en:'th attempt ('},
-    sec:         {ko:'초 후)',           en:'s)'},
-    offlineBan:  {ko:'인터넷 연결이 끊겼습니다 — 자동으로 재연결합니다', en:'Internet disconnected — reconnecting automatically'},
-    clearTitle:  {ko:'번역 내용을 지우시겠습니까?', en:'Clear all translations?'},
-    clearDesc:   {ko:'지금까지 번역된 모든 내용이\n삭제됩니다. 되돌릴 수 없습니다.', en:'All translated content will be\ndeleted. This cannot be undone.'},
-    cancel:      {ko:'취소',            en:'Cancel'},
-    delete:      {ko:'삭제',            en:'Delete'},
+    waitingTitle: { ko:'번역 대기 중', en:'Waiting for Translation' },
+    waitingSub:   { ko:'설교 번역이 시작되면\n여기에 자동으로 표시됩니다', en:'Translations will appear here\nautomatically when the sermon begins' },
+    newToast:     { ko:'↓ 새 번역이 도착했습니다', en:'↓ New translation arrived' },
+    connecting:   { ko:'연결 중...', en:'Connecting...' },
+    connected:    { ko:'실시간 연결됨', en:'Live' },
+    disconnected: { ko:'연결 끊김', en:'Disconnected' },
+    failed:       { ko:'연결 실패', en:'Failed' },
+    unavailable:  { ko:'서버 없음', en:'Unavailable' },
+    offline:      { ko:'오프라인', en:'Offline' },
+    retryFail:    { ko:'새로고침 필요', en:'Please refresh' },
+    connLost:     { ko:'연결이 끊겼습니다', en:'Connection lost' },
+    retrying:     { ko:'번째 시도 중 (', en:' attempt (' },
+    sec:          { ko:'초 후)', en:'s)' },
+    offlineBan:   { ko:'인터넷 연결이 끊겼습니다 — 자동 재연결 중', en:'Internet disconnected — reconnecting' },
+    clearTitle:   { ko:'번역 기록을 삭제하시겠습니까?', en:'Clear translation history?' },
+    clearDesc:    { ko:'저장된 번역 내용이 모두 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.', en:'All saved translations will be deleted.\nThis cannot be undone.' },
+    cancel:       { ko:'취소', en:'Cancel' },
+    delete:       { ko:'삭제', en:'Delete' },
+    scrollDown:   { ko:'최신으로', en:'Latest' },
   };
 
-  function t(key) { return T[key]?.[uiLang] || T[key]?.ko || key; }
+  function t(k) { return T[k]?.[uiLang] ?? T[k]?.ko ?? k; }
 
   function setUILang(lang) {
     uiLang = lang;
     localStorage.setItem('viewer-ui-lang', lang);
     document.getElementById('ui-ko').classList.toggle('on', lang==='ko');
     document.getElementById('ui-en').classList.toggle('on', lang==='en');
-    applyUILang();
+    renderTexts();
   }
 
-  function applyUILang() {
-    document.getElementById('waitingTxt').innerHTML = t('waiting').replace('\n','<br>');
-    document.getElementById('newBadge').textContent = t('newBadge');
-    document.getElementById('cmTitle').textContent  = t('clearTitle');
-    document.getElementById('cmDesc').textContent   = t('clearDesc');
-    document.getElementById('cmCancel').textContent = t('cancel');
-    document.getElementById('cmOk').textContent     = t('delete');
-    document.getElementById('rcMsg').textContent    = t('connLost');
+  function renderTexts() {
+    // 언어 배지
+    document.getElementById('langBadge').textContent =
+      langInfo.flag + ' ' + (uiLang==='ko' ? langInfo.name : langInfo.nameEn);
+
+    // 대기 화면
+    document.getElementById('waitingTitle').textContent = t('waitingTitle');
+    document.getElementById('waitingSub').innerHTML = t('waitingSub').replace('\n','<br>');
+
+    // 토스트
+    document.getElementById('newToast').textContent = t('newToast');
+
+    // 모달
+    document.getElementById('modalTitle').textContent  = t('clearTitle');
+    document.getElementById('modalDesc').innerHTML     = t('clearDesc').replace('\n','<br>');
+    document.getElementById('modalCancel').textContent = t('cancel');
+    document.getElementById('modalConfirm').textContent= t('delete');
+
+    // 오버레이
+    document.getElementById('rcMsg').textContent = t('connLost');
     document.getElementById('offlineBar').textContent = t('offlineBan');
-    const badge = document.getElementById('langBadge');
-    badge.textContent = langInfo.flag + ' ' + (uiLang==='ko' ? langInfo.name : langInfo.nameEn);
   }
 
-  // ── 테마 (기본: 다크) ──
+  /* ── 테마 (기본: 다크) ── */
   const savedTheme = localStorage.getItem('sermon-theme') || 'dark';
   applyTheme(savedTheme);
+
   function applyTheme(th) {
     document.documentElement.setAttribute('data-theme', th);
-    document.getElementById('themeIcon').textContent = th==='dark' ? '☀️' : '🌙';
-    document.querySelector('meta[name="theme-color"]').content = th==='dark' ? '#141413' : '#f9f9f8';
+    document.getElementById('themeBtn').textContent = th==='dark' ? '☀️' : '🌙';
+    document.querySelector('meta[name="theme-color"]').content = th==='dark' ? '#111110' : '#f8f7f4';
     localStorage.setItem('sermon-theme', th);
   }
-  function toggleTheme() { applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'); }
+  function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+  }
 
-  // ── 글자 크기 ──
-  let fontSize = parseInt(localStorage.getItem('sermon-fs')||20);
+  /* ── 글자 크기 ── */
+  let fontSize = parseInt(localStorage.getItem('sermon-fs') || 22);
   applyFS();
-  function changeFontSize(d){fontSize=Math.max(14,Math.min(54,fontSize+d));applyFS();localStorage.setItem('sermon-fs',fontSize);}
-  function applyFS(){document.documentElement.style.setProperty('--fs',fontSize+'px');document.getElementById('fsDisplay').textContent=fontSize;}
-
-  // ── 이전 내용 복원 ──
-  const saved2=JSON.parse(localStorage.getItem('sermon-transcript')||'[]');
-  if(saved2.length>0){
-    document.getElementById('waiting').style.display='none';
-    document.getElementById('transcript').style.display='block';
-    saved2.forEach((item,i)=>appendItem(item,false,i===saved2.length-1));
-    setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'instant'}),50);
+  function changeFontSize(d) {
+    fontSize = Math.max(14, Math.min(48, fontSize + d));
+    applyFS();
+    localStorage.setItem('sermon-fs', fontSize);
+  }
+  function applyFS() {
+    document.documentElement.style.setProperty('--fs', fontSize + 'px');
+    document.getElementById('fsVal').textContent = fontSize;
   }
 
-  let allTexts=saved2.slice(),pusher=null,retryCount=0,retryTimer=null;
-
-  function setStatus(s,msg){
-    document.getElementById('sDot').className='conn-dot '+s;
-    document.getElementById('sTxt').textContent=msg;
+  /* ── 이전 내용 복원 ── */
+  const saved = JSON.parse(localStorage.getItem('sermon-transcript') || '[]');
+  if (saved.length > 0) {
+    document.getElementById('waiting').style.display = 'none';
+    document.getElementById('transcript').style.display = 'block';
+    saved.forEach((item, i) => addItem(item.text || item, item.time || null, false, i === saved.length - 1));
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }), 50);
   }
 
-  function connect(){
-    try{
-      if(pusher){try{pusher.disconnect();}catch(e){}}
-      pusher=new Pusher(PUSHER_KEY,{cluster:PUSHER_CLUSTER,forceTLS:true,activityTimeout:30000,pongTimeout:15000});
-      pusher.connection.bind('connecting', ()=>setStatus('connecting',t('connecting')));
-      pusher.connection.bind('connected',  ()=>{
-        setStatus('connected',t('connected'));
-        retryCount=0;
+  let allItems = saved.map(x => typeof x === 'string' ? { text: x, time: null } : x);
+  let pusher = null, retryCount = 0, retryTimer = null;
+
+  /* ── 연결 상태 ── */
+  function setStatus(cls, msg) {
+    document.getElementById('sDot').className = 'conn-dot ' + cls;
+    document.getElementById('sTxt').textContent = msg;
+  }
+
+  /* ── Pusher 연결 ── */
+  function connect() {
+    try {
+      if (pusher) { try { pusher.disconnect(); } catch(e){} }
+      pusher = new Pusher(PUSHER_KEY, {
+        cluster: PUSHER_CLUSTER, forceTLS: true,
+        activityTimeout: 30000, pongTimeout: 15000,
+      });
+      pusher.connection.bind('connecting',  () => setStatus('connecting',  t('connecting')));
+      pusher.connection.bind('connected',   () => {
+        setStatus('connected', t('connected'));
+        retryCount = 0;
         document.getElementById('rcOverlay').classList.remove('show');
         document.getElementById('offlineBar').classList.remove('show');
       });
-      pusher.connection.bind('disconnected',()=>{setStatus('offline',t('disconnected'));scheduleRetry();});
-      pusher.connection.bind('failed',      ()=>{setStatus('offline',t('failed'));scheduleRetry();});
-      pusher.connection.bind('unavailable', ()=>{setStatus('offline',t('unavailable'));scheduleRetry();});
-      const ch=pusher.subscribe('sermon-'+currentLang);
-      ch.bind('translation',data=>showText(data.translated));
-    }catch(e){setStatus('offline','Error');scheduleRetry();}
+      pusher.connection.bind('disconnected',() => { setStatus('offline', t('disconnected')); scheduleRetry(); });
+      pusher.connection.bind('failed',      () => { setStatus('offline', t('failed'));       scheduleRetry(); });
+      pusher.connection.bind('unavailable', () => { setStatus('offline', t('unavailable'));  scheduleRetry(); });
+
+      const ch = pusher.subscribe('sermon-' + currentLang);
+      ch.bind('translation', data => showTranslation(data.translated));
+    } catch(e) { setStatus('offline', 'Error'); scheduleRetry(); }
   }
 
-  function scheduleRetry(){
-    if(retryCount>=10){setStatus('offline',t('retryFail'));document.getElementById('rcOverlay').classList.remove('show');return;}
-    const delay=Math.min(2000*Math.pow(1.5,retryCount),30000);
+  function scheduleRetry() {
+    if (retryCount >= 10) {
+      setStatus('offline', t('retryFail'));
+      document.getElementById('rcOverlay').classList.remove('show');
+      return;
+    }
+    const delay = Math.min(2000 * Math.pow(1.5, retryCount), 30000);
     retryCount++;
     document.getElementById('rcOverlay').classList.add('show');
-    document.getElementById('rcMsg').textContent=t('connLost');
-    document.getElementById('rcSub').textContent=retryCount+t('retrying')+Math.round(delay/1000)+t('sec');
+    document.getElementById('rcMsg').textContent = t('connLost');
+    document.getElementById('rcSub').textContent = retryCount + t('retrying') + Math.round(delay/1000) + t('sec');
     clearTimeout(retryTimer);
-    retryTimer=setTimeout(connect,delay);
+    retryTimer = setTimeout(connect, delay);
   }
 
-  window.addEventListener('online', ()=>{document.getElementById('offlineBar').classList.remove('show');retryCount=0;clearTimeout(retryTimer);connect();});
-  window.addEventListener('offline',()=>{document.getElementById('offlineBar').classList.add('show');setStatus('offline',t('offline'));});
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'&&(!pusher||pusher.connection.state!=='connected')){retryCount=0;clearTimeout(retryTimer);connect();}
+  window.addEventListener('online',  () => {
+    document.getElementById('offlineBar').classList.remove('show');
+    retryCount = 0; clearTimeout(retryTimer); connect();
+  });
+  window.addEventListener('offline', () => {
+    document.getElementById('offlineBar').classList.add('show');
+    setStatus('offline', t('offline'));
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && (!pusher || pusher.connection.state !== 'connected')) {
+      retryCount = 0; clearTimeout(retryTimer); connect();
+    }
   });
 
-  function appendItem(text,animate,isLatest){
-    const w=document.createElement('div');
-    w.className='transcript-item'+(isLatest?' latest':'')+(animate?' appear':'');
-    if(animate){const ts=document.createElement('div');ts.className='item-time';ts.textContent=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});w.appendChild(ts);}
-    const txt=document.createElement('div');txt.textContent=text;w.appendChild(txt);
-    document.getElementById('transcript').appendChild(w);
-    return w;
+  /* ── 항목 추가 ── */
+  function addItem(text, time, animate, isLatest) {
+    const wrap = document.createElement('div');
+    wrap.className = 't-item' + (isLatest ? ' latest' : '') + (animate ? ' appear' : '');
+
+    if (time) {
+      const ts = document.createElement('div');
+      ts.className = 't-time';
+      ts.textContent = time;
+      wrap.appendChild(ts);
+    }
+
+    const body = document.createElement('div');
+    body.className = 't-body';
+    body.textContent = text;
+    wrap.appendChild(body);
+
+    document.getElementById('transcript').appendChild(wrap);
+    return wrap;
   }
 
-  function showText(text){
-    document.getElementById('waiting').style.display='none';
-    const tr=document.getElementById('transcript');
-    tr.style.display='block';
-    const scrollY=window.scrollY;
-    const scrollEl=document.scrollingElement||document.documentElement;
-    const prev=tr.querySelector('.latest');
-    if(prev){prev.classList.remove('latest');prev.style.borderLeft='';prev.style.paddingLeft='';}
-    appendItem(text,false,true);
-    scrollEl.scrollTop=scrollY;
-    window.scrollTo({top:scrollY,behavior:'instant'});
-    requestAnimationFrame(()=>{
-      window.scrollTo({top:scrollY,behavior:'instant'});
-      requestAnimationFrame(()=>window.scrollTo({top:scrollY,behavior:'instant'}));
+  /* ── 번역 표시 ── */
+  function showTranslation(text) {
+    document.getElementById('waiting').style.display = 'none';
+    const tr = document.getElementById('transcript');
+    tr.style.display = 'block';
+
+    // 스크롤 위치 유지
+    const scrollY = window.scrollY;
+    const scrollEl = document.scrollingElement || document.documentElement;
+
+    // 이전 latest 해제
+    const prev = tr.querySelector('.t-item.latest');
+    if (prev) prev.classList.remove('latest');
+
+    // 새 항목 추가
+    const now = new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+    addItem(text, now, false, true);
+
+    // 스크롤 위치 복원
+    scrollEl.scrollTop = scrollY;
+    window.scrollTo({ top: scrollY, behavior: 'instant' });
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY, behavior: 'instant' });
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
     });
-    setStatus('connected',t('connected'));
-    allTexts.push(text);
-    if(allTexts.length>50)allTexts.shift();
-    localStorage.setItem('sermon-transcript',JSON.stringify(allTexts));
-    const b=document.getElementById('newBadge');
-    b.classList.remove('show');void b.offsetWidth;b.classList.add('show');
-    clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove('show'),5000);
+
+    setStatus('connected', t('connected'));
+
+    // 저장
+    const time = now;
+    allItems.push({ text, time });
+    if (allItems.length > 50) allItems.shift();
+    localStorage.setItem('sermon-transcript', JSON.stringify(allItems));
+
+    // 새 번역 토스트
+    const toast = document.getElementById('newToast');
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toast.classList.remove('show'), 5000);
   }
 
-  window.addEventListener('scroll',()=>{
-    const d=document.body.scrollHeight-window.scrollY-window.innerHeight;
-    if(d<=150)document.getElementById('newBadge').classList.remove('show');
-  },{passive:true});
+  /* ── 스크롤 감지 ── */
+  window.addEventListener('scroll', () => {
+    const dist = document.body.scrollHeight - window.scrollY - window.innerHeight;
+    if (dist <= 120) document.getElementById('newToast').classList.remove('show');
+  }, { passive: true });
 
-  function scrollToLatest(){
-    const l=document.querySelector('.transcript-item.latest');
-    if(l)l.scrollIntoView({behavior:'smooth',block:'start'});
-    document.getElementById('newBadge').classList.remove('show');
+  function scrollToLatest() {
+    const latest = document.querySelector('.t-item.latest');
+    if (latest) latest.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('newToast').classList.remove('show');
   }
 
-  function showClearModal(){document.getElementById('cmBg').classList.add('show');}
-  function hideClearModal(e){if(!e||e.target===document.getElementById('cmBg'))document.getElementById('cmBg').classList.remove('show');}
-  function clearTranscript(){
-    const tr=document.getElementById('transcript');
-    tr.innerHTML='';tr.style.display='none';
-    document.getElementById('waiting').style.display='flex';
-    allTexts=[];localStorage.removeItem('sermon-transcript');
-    document.getElementById('cmBg').classList.remove('show');
+  /* ── 삭제 모달 ── */
+  function showClearModal() { document.getElementById('modalBg').classList.add('show'); }
+  function hideModal(e) {
+    if (!e || e.target === document.getElementById('modalBg'))
+      document.getElementById('modalBg').classList.remove('show');
+  }
+  function clearAll() {
+    const tr = document.getElementById('transcript');
+    tr.innerHTML = ''; tr.style.display = 'none';
+    document.getElementById('waiting').style.display = 'flex';
+    allItems = [];
+    localStorage.removeItem('sermon-transcript');
+    document.getElementById('modalBg').classList.remove('show');
   }
 
-  // 초기화
+  /* ── 초기화 ── */
   setUILang(uiLang);
   connect();
 </script>
 </body>
 </html>
+
 
 
 
