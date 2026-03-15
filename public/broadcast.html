@@ -459,20 +459,41 @@
   function hideModal(e){if(!e||e.target===document.getElementById('modalBg'))document.getElementById('modalBg').classList.remove('on');}
 
   // ── 음성인식 ──
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  let recognition=null,isListening=false,autoMode=true,silTimer=null;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let recognition=null, isListening=false, autoMode=true, silTimer=null;
+
+  function dbg(msg) {
+    console.log('[MIC]', msg);
+    const b = document.getElementById('intBox');
+    b.textContent = '[DEBUG] ' + msg;
+    b.className = 'int-txt on';
+  }
 
   function toggleMic(){
-    if(!SR){toast(uiLang==='ko'?'Chrome에서만 사용 가능합니다':'Chrome only');return;}
-    isListening?stopMic():startMic();
+    dbg('toggleMic() called — SR=' + (SR ? SR.name || 'available' : 'NOT FOUND') + ', isListening=' + isListening);
+    if (!SR) {
+      toast('이 브라우저는 음성인식을 지원하지 않습니다 (Chrome/Edge 필요)');
+      dbg('SR is null — browser not supported');
+      return;
+    }
+    // HTTPS 체크
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      toast('음성인식은 HTTPS에서만 작동합니다');
+      dbg('Not HTTPS: ' + location.protocol + '//' + location.hostname);
+      return;
+    }
+    isListening ? stopMic() : startMic();
   }
 
   function startMic(){
-    try { recognition = new SR(); } catch(e) { toast('SpeechRecognition 미지원 브라우저입니다'); return; }
+    dbg('startMic() called');
+    try { recognition = new SR(); dbg('recognition object created OK'); }
+    catch(e) { toast('SpeechRecognition 생성 오류: ' + e.message); dbg('new SR() failed: ' + e.message); return; }
 
     recognition.lang = srcLang==='ko' ? 'ko-KR' : 'en-US';
     recognition.continuous = true;
     recognition.interimResults = true;
+    dbg('lang=' + recognition.lang + ' continuous=true');
 
     recognition.onresult = e => {
       let interim = '';
@@ -495,22 +516,24 @@
     };
 
     recognition.onerror = e => {
-      console.error('SpeechRecognition error:', e.error);
+      console.error('SpeechRecognition error:', e.error, e);
+      dbg('onerror: ' + e.error);
       const msg = {
-        'not-allowed':   uiLang==='ko'?'마이크 권한을 허용해주세요':'Allow microphone access',
+        'not-allowed':   uiLang==='ko'?'마이크 권한을 허용해주세요 (주소창 왼쪽 🔒 클릭)':'Allow microphone (click 🔒 in address bar)',
         'audio-capture': uiLang==='ko'?'마이크를 찾을 수 없습니다':'No microphone found',
-        'network':       uiLang==='ko'?'네트워크 오류 (HTTPS 필요)':'Network error — HTTPS required',
-        'no-speech':     null, // 무시 (자동 재시작됨)
-        'aborted':       null,
+        'network':       uiLang==='ko'?'네트워크 오류 — HTTPS 필요':'Network error — HTTPS required',
+        'service-not-allowed': uiLang==='ko'?'음성인식 서비스 차단됨 (HTTPS 필요)':'Speech service blocked — HTTPS required',
       }[e.error];
       if (msg) { toast(msg); stopMic(); }
     };
 
     recognition.onend = () => {
-      if (isListening) setTimeout(()=>{ try { recognition.start(); } catch(e){} }, 300);
+      dbg('onend — isListening=' + isListening);
+      if (isListening) setTimeout(()=>{ try { recognition.start(); } catch(e){ dbg('restart failed: '+e.message); } }, 300);
     };
 
     recognition.onstart = () => {
+      dbg('onstart fired ✓');
       document.getElementById('micBtn').classList.add('on');
       document.getElementById('micLabel').textContent = uiLang==='ko'?'녹음 중 — 중지':'Recording — Stop';
       document.getElementById('intBox').textContent = uiLang==='ko'?'● 마이크 준비됨':'● Mic ready';
@@ -520,8 +543,10 @@
     try {
       isListening = true;
       recognition.start();
+      dbg('recognition.start() called — waiting for onstart...');
     } catch(e) {
       isListening = false;
+      dbg('start() threw: ' + e.message);
       toast((uiLang==='ko'?'마이크 오류: ':'Mic error: ') + e.message);
     }
   }
