@@ -161,6 +161,13 @@
     .rpane.on { display:block; }
     .rpane-txt { color:var(--text); font-size:15px; line-height:1.85; word-break:break-word; }
     .rpane-hint { color:var(--text2); font-size:12px; line-height:1.8; font-style:italic; }
+
+    /* 누적 로그 아이템 */
+    .log-item { padding:10px 0; border-bottom:1px solid var(--border2); }
+    .log-item:last-child { border-bottom:none; }
+    .log-item-time { font-size:10px; color:var(--text3); margin-bottom:4px; }
+    .log-item-text { font-size:14px; line-height:1.8; word-break:break-word; color:var(--text); }
+    .log-item-error { font-size:12px; color:var(--red); font-style:italic; margin-top:4px; }
     .t-badge { display:none; align-items:center; gap:5px; color:var(--accent); font-size:11px; animation:pulse 1s infinite; }
     .t-badge.on { display:flex; }
 
@@ -230,10 +237,11 @@
   <button class="tog on" id="autoTog" onclick="toggleAuto()"></button>
   <span class="c-label" data-ko="자동 번역" data-en="Auto">자동 번역</span>
   <select id="gapSel" class="c-select">
-    <option value="5000">5s</option>
-    <option value="10000" selected>10s</option>
-    <option value="15000">15s</option>
-    <option value="30000">30s</option>
+    <option value="1000">1s</option>
+    <option value="2000">2s</option>
+    <option value="3000">3s</option>
+    <option value="5000" selected>5s ★</option>
+    <option value="10000">10s</option>
   </select>
   <div class="c-sep"></div>
   <button class="file-btn" id="refBtn" onclick="document.getElementById('fileInput').click()">
@@ -290,6 +298,8 @@
         <span id="tBadge" class="t-badge" data-ko="번역 중..." data-en="Translating...">번역 중...</span>
         <span id="sentLbl" class="ph-ok"></span>
         <span id="lastTime" class="ph-meta"></span>
+        <button id="saveTranscriptBtn" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;padding:2px 8px;border-radius:5px;" onclick="saveTranscript()" title="영어 트랜스크립트 저장">⬇ EN</button>
+        <button style="background:transparent;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;" onclick="clearTranscriptLog()" data-ko="기록 지우기" data-en="Clear log">기록 지우기</button>
       </div>
     </div>
     <div class="rtabs" id="rTabs"></div>
@@ -411,12 +421,28 @@
     document.getElementById('urlWarning').style.display = isProduction ? 'none' : 'flex';
   }
 
+  // 영어 트랜스크립트 저장용
+  let enTranscript = [];
+
   function renderTabs() {
-    const tabs=document.getElementById('rTabs'), panes=document.getElementById('rPanes');
+    const tabs=document.getElementById('rTabs');
     const langs=[...activeLangs];
     const cur=tabs.querySelector('.rtab.on')?.dataset.lang||langs[0];
-    tabs.innerHTML=langs.map(l=>'<div class="rtab'+(l===cur?' on':'')+'" data-lang="'+l+'" onclick="switchTab(\''+l+'\')">'+LANGS[l].flag+' '+LANGS[l].name+'</div>').join('');
-    panes.innerHTML=langs.map(l=>'<div class="rpane'+(l===cur?' on':'')+'" id="pane-'+l+'"><div class="rpane-hint" id="hint-'+l+'">'+(uiLang==='ko'?'번역 완료 시 뷰어에 자동 전송됩니다':'Translation will be sent to viewers automatically')+'</div><div class="rpane-txt" id="result-'+l+'" style="display:none;"></div></div>').join('');
+    tabs.innerHTML=langs.map(l=>'<div class="rtab'+(l===cur?' on':'')+'" data-lang="'+l+'" onclick="switchTab(\''+ l +'\')">'+LANGS[l].flag+' '+LANGS[l].name+'</div>').join('');
+    // 누적 로그 패널 — 없는 것만 새로 생성
+    langs.forEach(l => {
+      if (!document.getElementById('pane-'+l)) {
+        const pane = document.createElement('div');
+        pane.className = 'rpane' + (l===cur?' on':'');
+        pane.id = 'pane-'+l;
+        pane.innerHTML = '<div style="padding:12px 16px;color:var(--text2);font-size:12px;font-style:italic;" id="hint-'+l+'">'+(uiLang==='ko'?'번역이 완료되면 여기에 누적됩니다':'Translations will accumulate here')+'</div><div id="log-'+l+'" style="padding:0 16px 16px;"></div>';
+        document.getElementById('rPanes').appendChild(pane);
+      }
+    });
+    langs.forEach(l => {
+      const pane = document.getElementById('pane-'+l);
+      if (pane) pane.classList.toggle('on', l===cur);
+    });
   }
 
   function switchTab(l) {
@@ -602,26 +628,46 @@
     document.getElementById('tBadge').classList.add('on');
     document.getElementById('sentLbl').textContent='';
     const tt=text;
+    const timeStr=new Date().toLocaleTimeString();
     document.getElementById('src').value=''; updateWC();
+
+    // 번역 중 표시
     activeLangs.forEach(l=>{
-      const r=document.getElementById('result-'+l),h=document.getElementById('hint-'+l);
-      if(r){r.style.display='block';r.textContent=uiLang==='ko'?'번역 중...':'Translating...';}
-      if(h)h.style.display='none';
+      const hint=document.getElementById('hint-'+l);
+      if(hint) hint.style.display='none';
     });
+
     try{
       const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:tt,refText:refText||null,langs:[...activeLangs],srcLang})});
       const d=await res.json();
       if(!res.ok)throw new Error(d.error||'Server error');
+
       const ls=Object.keys(d.results);
-      ls.forEach(l=>{const r=document.getElementById('result-'+l);if(r)r.textContent=d.results[l];});
+
+      // 각 언어 로그에 누적 추가
+      ls.forEach(l=>{
+        appendToLog(l, tt, d.results[l], timeStr, null);
+        // 영어 트랜스크립트 저장
+        if(l==='en') {
+          enTranscript.push({time:timeStr, src:tt, text:d.results[l]});
+          document.getElementById('saveTranscriptBtn').style.display='';
+        }
+      });
+
+      // 에러가 있으면 브로드캐스트에만 표시 (뷰어엔 전송 안 됨)
+      if(d.errors){
+        Object.keys(d.errors).forEach(l=>{
+          appendToLog(l, tt, null, timeStr, d.errors[l]);
+        });
+      }
+
       document.getElementById('sentLbl').textContent='✓ '+ls.map(l=>LANGS[l]?.flag||l).join(' ');
-      document.getElementById('lastTime').textContent=new Date().toLocaleTimeString();
-      if(d.errors)Object.keys(d.errors).forEach(l=>{const r=document.getElementById('result-'+l);if(r)r.textContent='Error: '+d.errors[l];});
-      addHistory(tt,d.results);
+      document.getElementById('lastTime').textContent=timeStr;
       toast('✓ '+ls.length+(uiLang==='ko'?'개 언어 번역 완료':' languages sent'));
+
     }catch(e){
       document.getElementById('src').value=tt; updateWC();
-      activeLangs.forEach(l=>{const r=document.getElementById('result-'+l);if(r)r.textContent='Error: '+e.message;});
+      activeLangs.forEach(l=>{ appendToLog(l, tt, null, timeStr, e.message); });
       toast('Error: '+e.message);
     }
     isTranslating=false;
@@ -630,20 +676,65 @@
     document.getElementById('tBadge').classList.remove('on');
   }
 
-  function addHistory(src,results){
-    histArr.unshift({src,results,t:new Date().toLocaleTimeString()});
-    if(histArr.length>8)histArr.pop();
-    document.getElementById('hist').style.display='block';
-    document.getElementById('histRow').innerHTML=histArr.map((h,i)=>'<div class="h-chip" onclick="loadH('+i+')"><div class="h-t">'+h.t+'</div><div class="h-p">'+h.src.slice(0,45)+'...</div></div>').join('');
+  function appendToLog(lang, srcText, translation, timeStr, errorMsg) {
+    const log = document.getElementById('log-'+lang);
+    if (!log) return;
+
+    const item = document.createElement('div');
+    item.className = 'log-item';
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'log-item-time';
+    timeEl.textContent = timeStr + ' · ' + srcText.slice(0,40) + (srcText.length>40?'…':'');
+    item.appendChild(timeEl);
+
+    if (translation) {
+      const textEl = document.createElement('div');
+      textEl.className = 'log-item-text';
+      textEl.textContent = translation;
+      item.appendChild(textEl);
+    }
+    if (errorMsg) {
+      const errEl = document.createElement('div');
+      errEl.className = 'log-item-error';
+      errEl.textContent = '⚠ ' + errorMsg;
+      item.appendChild(errEl);
+    }
+
+    log.appendChild(item);
+    // 자동 스크롤 (패널 내부)
+    const pane = document.getElementById('pane-'+lang);
+    if (pane) pane.scrollTop = pane.scrollHeight;
   }
 
-  function loadH(i){
-    const h=histArr[i];
-    document.getElementById('src').value=h.src; updateWC();
-    Object.keys(h.results).forEach(l=>{
-      const r=document.getElementById('result-'+l);if(r){r.style.display='block';r.textContent=h.results[l];}
-      const hint=document.getElementById('hint-'+l);if(hint)hint.style.display='none';
+  // 3. 영어 트랜스크립트 저장
+  function saveTranscript() {
+    if (!enTranscript.length) return;
+    const lines = enTranscript.map(function(e) {
+      return '[' + e.time + ']\nOriginal: ' + e.src + '\nTranslation: ' + e.text + '\n';
+    }).join('\n');
+    const blob = new Blob([lines], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sermon-transcript-' + new Date().toISOString().slice(0,10) + '.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(uiLang==='ko'?'트랜스크립트 저장됨':'Transcript saved');
+  }
+
+  function clearTranscriptLog() {
+    activeLangs.forEach(l=>{
+      const log=document.getElementById('log-'+l);
+      if(log) log.innerHTML='';
+      const hint=document.getElementById('hint-'+l);
+      if(hint) hint.style.display='';
     });
+    enTranscript=[];
+    document.getElementById('saveTranscriptBtn').style.display='none';
+    document.getElementById('sentLbl').textContent='';
+    document.getElementById('lastTime').textContent='';
+    toast(uiLang==='ko'?'기록이 삭제됐습니다':'Log cleared');
   }
 
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'ping',langs:['ko']})})
