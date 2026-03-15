@@ -254,9 +254,11 @@
   <span class="ls-arr">→</span>
   <div class="lang-chip on" data-lang="ko" onclick="toggleLang('ko')"><span class="chip-f">🇰🇷</span><span>한국어</span><span class="chip-b">개역개정</span></div>
   <div class="lang-chip"    data-lang="en" onclick="toggleLang('en')"><span class="chip-f">🇺🇸</span><span>English</span><span class="chip-b">NIV</span></div>
-  <div class="lang-chip"    data-lang="tl" onclick="toggleLang('tl')"><span class="chip-f">🇵🇭</span><span>Tagalog</span><span class="chip-b">MBB</span></div>
   <div class="lang-chip"    data-lang="es" onclick="toggleLang('es')"><span class="chip-f">🇪🇸</span><span>Español</span><span class="chip-b">RV60</span></div>
-  <div class="lang-chip"    data-lang="zh" onclick="toggleLang('zh')"><span class="chip-f">🇨🇳</span><span>中文</span><span class="chip-b">和合本</span></div>
+  <div class="lang-chip"    data-lang="zh-cn" onclick="toggleLang('zh-cn')"><span class="chip-f">🇨🇳</span><span>普通话</span><span class="chip-b">和合本</span></div>
+  <div class="lang-chip"    data-lang="zh-hk" onclick="toggleLang('zh-hk')"><span class="chip-f">🇭🇰</span><span>廣東話</span><span class="chip-b">和合本</span></div>
+  <div class="lang-chip"    data-lang="fa" onclick="toggleLang('fa')"><span class="chip-f">🇮🇷</span><span>فارسی</span><span class="chip-b">کتاب مقدس</span></div>
+  <div class="lang-chip"    data-lang="pa" onclick="toggleLang('pa')"><span class="chip-f">🇮🇳</span><span>ਪੰਜਾਬੀ</span><span class="chip-b">ਬਾਈਬਲ</span></div>
   <div class="ls-links" id="lsLinks"></div>
 </div>
 
@@ -315,7 +317,9 @@
   const API = '/api/translate', BASE = location.origin;
   const LANGS = {
     ko:{flag:'🇰🇷',name:'한국어'}, en:{flag:'🇺🇸',name:'English'},
-    tl:{flag:'🇵🇭',name:'Tagalog'}, es:{flag:'🇪🇸',name:'Español'}, zh:{flag:'🇨🇳',name:'中文'},
+    es:{flag:'🇪🇸',name:'Español'},
+    'zh-cn':{flag:'🇨🇳',name:'普通话'}, 'zh-hk':{flag:'🇭🇰',name:'廣東話'},
+    fa:{flag:'🇮🇷',name:'فارسی'}, pa:{flag:'🇮🇳',name:'ਪੰਜਾਬੀ'},
   };
 
   let srcLang='en', activeLangs=new Set(['ko']);
@@ -464,36 +468,62 @@
   }
 
   function startMic(){
-    recognition=new SR();
-    recognition.lang=srcLang==='ko'?'ko-KR':'en-US';
-    recognition.continuous=true; recognition.interimResults=true;
-    recognition.onresult=e=>{
-      let interim='';
-      for(let i=e.resultIndex;i<e.results.length;i++){
-        const t=e.results[i][0].transcript;
-        if(e.results[i].isFinal){
-          const cur=document.getElementById('src').value;
-          document.getElementById('src').value=(cur+' '+t).trim(); updateWC();
-          if(autoMode){
+    try { recognition = new SR(); } catch(e) { toast('SpeechRecognition 미지원 브라우저입니다'); return; }
+
+    recognition.lang = srcLang==='ko' ? 'ko-KR' : 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = e => {
+      let interim = '';
+      for (let i=e.resultIndex; i<e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          const cur = document.getElementById('src').value;
+          document.getElementById('src').value = (cur+' '+t).trim();
+          updateWC();
+          if (autoMode) {
             clearTimeout(silTimer);
-            const gap=parseInt(document.getElementById('gapSel').value);
-            silTimer=setTimeout(()=>{if(document.getElementById('src').value.trim()&&!isTranslating)doTranslate();},gap);
+            const gap = parseInt(document.getElementById('gapSel').value);
+            silTimer = setTimeout(()=>{ if(document.getElementById('src').value.trim()&&!isTranslating) doTranslate(); }, gap);
           }
-        } else {interim+=t;}
+        } else { interim += t; }
       }
-      const b=document.getElementById('intBox');
-      if(interim){b.textContent='● '+interim;b.className='int-txt on';}
-      else{b.textContent=uiLang==='ko'?'✓ 인식 중...':'✓ Listening...';b.className='int-txt on';}
+      const b = document.getElementById('intBox');
+      if (interim) { b.textContent='● '+interim; b.className='int-txt on'; }
+      else { b.textContent=uiLang==='ko'?'✓ 인식 중...':'✓ Listening...'; b.className='int-txt on'; }
     };
-    recognition.onerror=e=>{if(e.error==='not-allowed'){toast(uiLang==='ko'?'마이크 권한이 필요합니다':'Mic permission required');stopMic();}};
-    recognition.onend=()=>{if(isListening)setTimeout(()=>{try{recognition.start();}catch(e){}},200);};
-    try{
-      recognition.start(); isListening=true;
+
+    recognition.onerror = e => {
+      console.error('SpeechRecognition error:', e.error);
+      const msg = {
+        'not-allowed':   uiLang==='ko'?'마이크 권한을 허용해주세요':'Allow microphone access',
+        'audio-capture': uiLang==='ko'?'마이크를 찾을 수 없습니다':'No microphone found',
+        'network':       uiLang==='ko'?'네트워크 오류 (HTTPS 필요)':'Network error — HTTPS required',
+        'no-speech':     null, // 무시 (자동 재시작됨)
+        'aborted':       null,
+      }[e.error];
+      if (msg) { toast(msg); stopMic(); }
+    };
+
+    recognition.onend = () => {
+      if (isListening) setTimeout(()=>{ try { recognition.start(); } catch(e){} }, 300);
+    };
+
+    recognition.onstart = () => {
       document.getElementById('micBtn').classList.add('on');
-      document.getElementById('micLabel').textContent=uiLang==='ko'?'녹음 중 — 중지':'Recording — Stop';
-      document.getElementById('intBox').textContent=uiLang==='ko'?'● 마이크 준비됨':'● Mic ready';
-      document.getElementById('intBox').className='int-txt on';
-    }catch(e){toast('Mic error: '+e.message);}
+      document.getElementById('micLabel').textContent = uiLang==='ko'?'녹음 중 — 중지':'Recording — Stop';
+      document.getElementById('intBox').textContent = uiLang==='ko'?'● 마이크 준비됨':'● Mic ready';
+      document.getElementById('intBox').className = 'int-txt on';
+    };
+
+    try {
+      isListening = true;
+      recognition.start();
+    } catch(e) {
+      isListening = false;
+      toast((uiLang==='ko'?'마이크 오류: ':'Mic error: ') + e.message);
+    }
   }
 
   function stopMic(){
