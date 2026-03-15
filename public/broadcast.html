@@ -262,6 +262,12 @@
   <div class="ls-links" id="lsLinks"></div>
 </div>
 
+<!-- Production URL 미설정 경고 -->
+<div id="urlWarning" style="display:none; background:#2a1500; border-bottom:1px solid #5a3000; padding:7px 20px; align-items:center; gap:10px; flex-shrink:0; font-family:'Noto Sans KR',sans-serif;">
+  <span style="font-size:13px;">⚠️</span>
+  <span style="font-size:12px; color:#fb923c;">뷰어 링크가 Preview URL입니다. broadcast.html 상단의 <code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px;">PRODUCTION_URL</code> 에 Vercel Production 주소를 입력해주세요.</span>
+</div>
+
 <div class="interim">
   <span id="intBox" class="int-txt" data-ko="마이크 버튼을 누르면 음성 인식이 시작됩니다" data-en="Press the mic button to start voice recognition">마이크 버튼을 누르면 음성 인식이 시작됩니다</span>
 </div>
@@ -314,7 +320,16 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
-  const API = '/api/translate', BASE = location.origin;
+  const API = '/api/translate';
+
+  // ── Production URL 설정 ──────────────────────────────────────
+  // Vercel 대시보드 → Domains 에서 확인한 Production URL 입력
+  // 예: 'https://sermon-translator.vercel.app'
+  // 비워두면 현재 접속 URL 자동 사용
+  const PRODUCTION_URL = '';
+  // ────────────────────────────────────────────────────────────
+
+  const BASE = PRODUCTION_URL || location.origin;
   const LANGS = {
     ko:{flag:'🇰🇷',name:'한국어'}, en:{flag:'🇺🇸',name:'English'},
     es:{flag:'🇪🇸',name:'Español'},
@@ -383,10 +398,17 @@
   }
 
   function renderLinks() {
+    const isProduction = !!PRODUCTION_URL;
     document.getElementById('lsLinks').innerHTML = [...activeLangs].map(l => {
-      const url=BASE+'/viewer?lang='+l;
-      return '<div class="ls-link"><span>'+LANGS[l].flag+'</span><a href="'+url+'" target="_blank">?lang='+l+'</a><button class="ls-copy" onclick="copyText(\''+url+'\')">⧉</button></div>';
+      const url = BASE + '/viewer?lang=' + l;
+      return `<div class="ls-link">
+        <span>${LANGS[l].flag}</span>
+        <a href="${url}" target="_blank">${isProduction ? url : '⚠️ ' + url}</a>
+        <button class="ls-copy" onclick="copyText('${url}')" title="복사">⧉</button>
+      </div>`;
     }).join('');
+    // PRODUCTION_URL 미설정 경고
+    document.getElementById('urlWarning').style.display = isProduction ? 'none' : 'flex';
   }
 
   function renderTabs() {
