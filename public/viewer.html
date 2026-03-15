@@ -368,9 +368,10 @@
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
-      transition: background .15s;
+      transition: background .15s, color .15s, border-color .15s;
     }
     .bb-btn:active { background: var(--accent-dim); }
+    .bb-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-bar); }
 
     /* ════════════════════════════
        NEW TRANSLATION TOAST
@@ -557,7 +558,7 @@
 
   <!-- 우측 버튼 -->
   <div class="bb-actions">
-    <button class="bb-btn" onclick="scrollToLatest()" id="scrollBtn" title="최신으로">↓</button>
+    <button class="bb-btn bb-scroll-toggle" id="scrollToggleBtn" onclick="toggleAutoScroll()" title="자동 스크롤">↕</button>
     <button class="bb-btn" onclick="showClearModal()">🗑️</button>
   </div>
 </div>
@@ -790,25 +791,13 @@
     const tr = document.getElementById('transcript');
     tr.style.display = 'block';
 
-    // 스크롤 위치 유지
-    const scrollY = window.scrollY;
-    const scrollEl = document.scrollingElement || document.documentElement;
-
     // 이전 latest 해제
     const prev = tr.querySelector('.t-item.latest');
     if (prev) prev.classList.remove('latest');
 
     // 새 항목 추가
     const now = new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
-    addItem(text, now, false, true);
-
-    // 스크롤 위치 복원
-    scrollEl.scrollTop = scrollY;
-    window.scrollTo({ top: scrollY, behavior: 'instant' });
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: scrollY, behavior: 'instant' });
-      requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
-    });
+    const item = addItem(text, now, false, true);
 
     setStatus('connected', t('connected'));
 
@@ -818,19 +807,38 @@
     if (allItems.length > 50) allItems.shift();
     localStorage.setItem('sermon-transcript', JSON.stringify(allItems));
 
-    // 새 번역 토스트
-    const toast = document.getElementById('newToast');
-    toast.classList.remove('show');
-    void toast.offsetWidth;
-    toast.classList.add('show');
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => toast.classList.remove('show'), 5000);
+    // 자동 스크롤이면 최신으로 이동, 아니면 토스트 표시
+    if (autoScroll) {
+      setTimeout(() => item.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    } else {
+      const toast = document.getElementById('newToast');
+      toast.classList.remove('show');
+      void toast.offsetWidth;
+      toast.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => toast.classList.remove('show'), 5000);
+    }
   }
 
-  /* ── 스크롤 감지 ── */
+  /* ── 자동/수동 스크롤 ── */
+  let autoScroll = true;
+
+  function toggleAutoScroll() {
+    autoScroll = !autoScroll;
+    const btn = document.getElementById('scrollToggleBtn');
+    btn.classList.toggle('active', autoScroll);
+    btn.title = autoScroll ? (uiLang==='ko'?'자동 스크롤 켜짐 (탭하여 끄기)':'Auto scroll ON') : (uiLang==='ko'?'수동 스크롤 (탭하여 켜기)':'Manual scroll');
+    btn.textContent = autoScroll ? '↕' : '⤓';
+    if (autoScroll) scrollToLatest();
+  }
+
+  // 스크롤 감지 — 위로 올리면 자동 스크롤 일시 해제
+  let userScrolling = false, scrollPauseTimer = null;
   window.addEventListener('scroll', () => {
     const dist = document.body.scrollHeight - window.scrollY - window.innerHeight;
-    if (dist <= 120) document.getElementById('newToast').classList.remove('show');
+    if (dist <= 120) {
+      document.getElementById('newToast').classList.remove('show');
+    }
   }, { passive: true });
 
   function scrollToLatest() {
@@ -856,12 +864,11 @@
 
   /* ── 초기화 ── */
   setUILang(uiLang);
+  // 자동 스크롤 버튼 초기 상태
+  document.getElementById('scrollToggleBtn').classList.add('active');
   connect();
 </script>
 </body>
 </html>
 
 
-
-
- 
