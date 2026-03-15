@@ -326,6 +326,10 @@
   let isTranslating=false, refText='', histArr=[];
   let uiLang = localStorage.getItem('ui-lang') || 'ko';
 
+  // 음성인식 변수 — setUILang이 isListening을 참조하므로 먼저 선언
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let recognition=null, isListening=false, autoMode=true, silTimer=null;
+
   // ── UI 언어 ──
   function setUILang(lang) {
     uiLang = lang;
@@ -459,8 +463,6 @@
   function hideModal(e){if(!e||e.target===document.getElementById('modalBg'))document.getElementById('modalBg').classList.remove('on');}
 
   // ── 음성인식 ──
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-  let recognition=null, isListening=false, autoMode=true, silTimer=null;
 
   function dbg(msg) {
     console.log('[MIC]', msg);
