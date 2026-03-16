@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    :root { --fs:22px; --topbar:72px; --bottombar:72px; }
+    :root { --fs:22px; --topbar:80px; --bottombar:72px; }
 
     /* ── THEMES ── */
     [data-theme="dark"] {
@@ -26,7 +26,7 @@
       --accent:     #e08c1a;
       --accent-dim: rgba(224,140,26,.12);
       --accent-bar: rgba(224,140,26,.5);
-      --bar-bg:     rgba(26,26,24,.92);
+      --bar-bg:     #1a1a18;
       --overlay:    rgba(17,17,16,.96);
     }
     [data-theme="light"] {
@@ -40,7 +40,7 @@
       --accent:     #c97005;
       --accent-dim: rgba(201,112,5,.08);
       --accent-bar: rgba(201,112,5,.4);
-      --bar-bg:     rgba(248,247,244,.94);
+      --bar-bg:     #f8f7f4;
       --overlay:    rgba(248,247,244,.97);
     }
 
@@ -73,8 +73,6 @@
       padding: 6px 14px;
       gap: 5px;
       background: var(--bar-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
       z-index: 100;
     }
@@ -99,7 +97,7 @@
     .tb-logo img { width:26px; height:26px; border-radius:6px; object-fit:cover; }
     .tb-logo-txt { display:flex; flex-direction:column; gap:1px; }
     .tb-logo-title { font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; line-height:1; color:var(--text); font-family:'Noto Sans KR',sans-serif; }
-    .tb-logo-sub { font-size:8px; color:var(--text3); letter-spacing:.05em; line-height:1; font-family:'Noto Sans KR',sans-serif; }
+    .tb-logo-sub { font-size:8px; color:var(--text2); letter-spacing:.05em; line-height:1; font-family:'Noto Sans KR',sans-serif; }
 
     /* 언어 배지 — 작게 */
     .lang-badge {
@@ -201,8 +199,8 @@
        SCROLL AREA
     ════════════════════════════ */
     .scroll-area {
-      padding-top: calc(var(--topbar) + env(safe-area-inset-top, 0px));
-      padding-bottom: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px));
+      padding-top: calc(var(--topbar) + env(safe-area-inset-top, 0px) + 4px);
+      padding-bottom: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px) + 4px);
       min-height: 100dvh;
     }
 
@@ -315,8 +313,6 @@
       padding: 0 16px;
       padding-bottom: env(safe-area-inset-bottom, 0px);
       background: var(--bar-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
       display: flex; align-items: center;
       justify-content: space-between;
