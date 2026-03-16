@@ -32,26 +32,26 @@
       background: var(--bg); color: var(--text);
       font-family: 'DM Sans','Noto Sans KR',sans-serif;
       height: 100vh; display: flex; flex-direction: column;
-      overflow: hidden; font-size: 13px;
+      overflow: hidden; font-size: 16px;
       -webkit-font-smoothing: antialiased;
     }
 
     /* HEADER */
     header {
-      height: 54px; background: var(--surface);
+      height: 68px; background: var(--surface);
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center;
       padding: 0 20px; gap: 14px; flex-shrink: 0;
     }
     .logo { display: flex; align-items: center; gap: 10px; }
-    .logo img { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; }
+    .logo img { width: 51px; height: 51px; border-radius: 11px; object-fit: cover; }
     .logo-text-wrap { display: flex; flex-direction: column; gap: 1px; }
     .logo-title {
-      font-size: 14px; font-weight: 700;
+      font-size: 21px; font-weight: 700;
       color: var(--text); letter-spacing: .06em;
       text-transform: uppercase; line-height: 1;
     }
-    .logo-sub { font-size: 9px; color: var(--text2); letter-spacing: .08em; line-height: 1; }
+    .logo-sub { font-size: 14px; color: var(--text2); letter-spacing: .08em; line-height: 1; }
     .h-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
     /* Lang UI toggle */
@@ -63,7 +63,7 @@
     .ui-lang-btn {
       padding: 3px 10px; border-radius: 6px; border: none;
       background: transparent; color: var(--text2);
-      font-size: 11px; font-weight: 500; cursor: pointer;
+      font-size: 14px; font-weight: 500; cursor: pointer;
       font-family: inherit; transition: all .15s; white-space: nowrap;
     }
     .ui-lang-btn.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
@@ -72,7 +72,7 @@
       display: flex; align-items: center; gap: 6px;
       padding: 4px 10px; border-radius: 20px;
       border: 1px solid var(--border); background: var(--surface2);
-      font-size: 11px; color: var(--text3);
+      font-size: 14px; color: var(--text3);
     }
     .status-pill.ok  { border-color: rgba(34,197,94,.3); background: var(--green-bg); color: var(--green); }
     .status-pill.err { border-color: rgba(239,68,68,.3); background: var(--red-bg); color: var(--red); }
@@ -88,13 +88,13 @@
       gap: 8px; flex-shrink: 0; flex-wrap: wrap;
     }
     .c-sep { width:1px; height:20px; background:var(--border); margin:0 4px; flex-shrink:0; }
-    .c-label { font-size:11px; color:var(--text2); font-weight:500; white-space:nowrap; }
+    .c-label { font-size:14px; color:var(--text2); font-weight:500; white-space:nowrap; }
 
     .seg { display:flex; background:var(--bg); border:1px solid var(--border); border-radius:var(--r); padding:2px; gap:2px; }
-    .seg-btn { padding:4px 12px; border-radius:6px; border:none; background:transparent; color:var(--text2); font-size:12px; font-weight:500; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
+    .seg-btn { padding:4px 12px; border-radius:6px; border:none; background:transparent; color:var(--text2); font-size:15px; font-weight:500; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
     .seg-btn.on { background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.3); }
 
-    .mic-btn { display:flex; align-items:center; gap:6px; padding:5px 14px; border-radius:var(--r); border:1px solid var(--border); background:var(--surface2); color:var(--text2); font-size:12px; font-weight:500; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
+    .mic-btn { display:flex; align-items:center; gap:6px; padding:5px 14px; border-radius:var(--r); border:1px solid var(--border); background:var(--surface2); color:var(--text2); font-size:15px; font-weight:500; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
     .mic-btn:hover { border-color:var(--text3); color:var(--text); }
     .mic-btn.on { background:var(--red-bg); border-color:rgba(239,68,68,.4); color:var(--red); animation:micring 1.6s infinite; }
     @keyframes micring { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.2)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,0)} }
@@ -105,14 +105,14 @@
     .tog::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; transition:left .2s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
     .tog.on::after { left:18px; }
 
-    .c-select { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:var(--r); font-size:11px; font-family:inherit; cursor:pointer; outline:none; }
+    .c-select { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:var(--r); font-size:14px; font-family:inherit; cursor:pointer; outline:none; }
 
-    .file-btn { display:flex; align-items:center; gap:5px; padding:5px 12px; border-radius:var(--r); border:1px solid var(--border); background:var(--surface2); color:var(--text2); font-size:12px; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
+    .file-btn { display:flex; align-items:center; gap:5px; padding:5px 12px; border-radius:var(--r); border:1px solid var(--border); background:var(--surface2); color:var(--text2); font-size:15px; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
     .file-btn:hover { border-color:var(--text3); color:var(--text); }
     .file-btn.loaded { border-color:rgba(59,130,246,.4); background:rgba(59,130,246,.08); color:#60a5fa; }
     #fileInput { display:none; }
 
-    .trans-btn { margin-left:auto; display:flex; align-items:center; gap:7px; padding:6px 18px; border-radius:var(--r); border:none; background:var(--accent); color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
+    .trans-btn { margin-left:auto; display:flex; align-items:center; gap:7px; padding:6px 18px; border-radius:var(--r); border:none; background:var(--accent); color:#fff; font-size:16px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
     .trans-btn:hover:not(:disabled) { background:var(--accent-h); }
     .trans-btn:disabled { background:var(--surface2); color:var(--text3); cursor:not-allowed; }
     .spin { display:none; }
@@ -121,24 +121,24 @@
 
     /* LANG STRIP */
     .lang-strip { background:var(--bg); border-bottom:1px solid var(--border); padding:8px 20px; display:flex; align-items:center; gap:6px; flex-shrink:0; flex-wrap:wrap; }
-    .ls-label { font-size:11px; color:var(--text2); font-weight:500; white-space:nowrap; }
-    .ls-arr { color:var(--text2); font-size:12px; }
-    .lang-chip { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; border:1px solid var(--border); background:var(--surface2); color:var(--text3); font-size:12px; font-weight:400; cursor:pointer; transition:all .15s; user-select:none; }
+    .ls-label { font-size:14px; color:var(--text2); font-weight:500; white-space:nowrap; }
+    .ls-arr { color:var(--text2); font-size:15px; }
+    .lang-chip { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; border:1px solid var(--border); background:var(--surface2); color:var(--text3); font-size:15px; font-weight:400; cursor:pointer; transition:all .15s; user-select:none; }
     .lang-chip.on { border-color:var(--accent); background:var(--accent-bg); color:var(--accent-h); font-weight:500; }
     .lang-chip:not(.on) { opacity:.45; }
-    .chip-f { font-size:13px; }
-    .chip-b { font-size:9px; color:var(--text3); opacity:.7; }
+    .chip-f { font-size:16px; }
+    .chip-b { font-size:11px; color:var(--text3); opacity:.7; }
     .lang-chip.on .chip-b { color:rgba(245,158,11,.6); }
     .ls-links { margin-left:auto; display:flex; gap:5px; flex-wrap:wrap; }
-    .ls-link { display:flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; background:var(--surface2); border:1px solid var(--border); font-size:10px; }
-    .ls-link a { color:#60a5fa; text-decoration:none; font-size:10px; }
+    .ls-link { display:flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; background:var(--surface2); border:1px solid var(--border); font-size:12px; }
+    .ls-link a { color:#60a5fa; text-decoration:none; font-size:12px; }
     .ls-link a:hover { text-decoration:underline; }
-    .ls-copy { background:transparent; border:none; color:var(--text3); cursor:pointer; font-size:10px; padding:0 2px; }
+    .ls-copy { background:transparent; border:none; color:var(--text3); cursor:pointer; font-size:12px; padding:0 2px; }
     .ls-copy:hover { color:var(--accent); }
 
     /* INTERIM */
     .interim { background:var(--surface); border-bottom:1px solid var(--border); padding:7px 20px; min-height:34px; display:flex; align-items:center; flex-shrink:0; }
-    .int-txt { font-size:12px; color:var(--text2); font-style:italic; }
+    .int-txt { font-size:15px; color:var(--text2); font-style:italic; }
     .int-txt.on { color:var(--text2); font-style:normal; }
 
     /* MAIN */
@@ -146,29 +146,29 @@
     .panel { display:flex; flex-direction:column; min-height:0; }
     .panel+.panel { border-left:1px solid var(--border); }
     .panel-head { height:36px; background:var(--surface2); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:10px; flex-shrink:0; }
-    .ph-l { font-size:11px; color:var(--text2); font-weight:500; letter-spacing:.03em; }
+    .ph-l { font-size:14px; color:var(--text2); font-weight:500; letter-spacing:.03em; }
     .ph-r { margin-left:auto; display:flex; align-items:center; gap:10px; }
-    .ph-meta { font-size:11px; color:var(--text2); }
-    .ph-ok { font-size:11px; color:var(--green); }
-    textarea { flex:1; background:var(--surface); border:none; color:var(--text); font-size:15px; line-height:1.85; padding:18px 20px; resize:none; outline:none; font-family:inherit; }
+    .ph-meta { font-size:14px; color:var(--text2); }
+    .ph-ok { font-size:14px; color:var(--green); }
+    textarea { flex:1; background:var(--surface); border:none; color:var(--text); font-size:22px; line-height:1.85; padding:18px 20px; resize:none; outline:none; font-family:inherit; }
     textarea::placeholder { color:var(--text2); }
 
     .rtabs { display:flex; background:var(--surface2); border-bottom:1px solid var(--border); flex-shrink:0; }
-    .rtab { padding:8px 14px; font-size:12px; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; white-space:nowrap; }
+    .rtab { padding:8px 14px; font-size:15px; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; white-space:nowrap; }
     .rtab.on { color:var(--accent); border-bottom-color:var(--accent); font-weight:500; }
     .rpanes { flex:1; min-height:0; overflow:hidden; background:var(--surface); display:flex; flex-direction:column; }
     .rpane { display:none; flex:1; overflow-y:auto; padding:18px 20px; }
     .rpane.on { display:block; }
-    .rpane-txt { color:var(--text); font-size:15px; line-height:1.85; word-break:break-word; }
-    .rpane-hint { color:var(--text2); font-size:12px; line-height:1.8; font-style:italic; }
+    .rpane-txt { color:var(--text); font-size:22px; line-height:1.85; word-break:break-word; }
+    .rpane-hint { color:var(--text2); font-size:15px; line-height:1.8; font-style:italic; }
 
     /* 누적 로그 아이템 */
     .log-item { padding:10px 0; border-bottom:1px solid var(--border2); }
     .log-item:last-child { border-bottom:none; }
-    .log-item-time { font-size:10px; color:var(--text3); margin-bottom:4px; }
+    .log-item-time { font-size:12px; color:var(--text3); margin-bottom:4px; }
     .log-item-text { font-size:14px; line-height:1.8; word-break:break-word; color:var(--text); }
-    .log-item-error { font-size:12px; color:var(--red); font-style:italic; margin-top:4px; }
-    .t-badge { display:none; align-items:center; gap:5px; color:var(--accent); font-size:11px; animation:pulse 1s infinite; }
+    .log-item-error { font-size:15px; color:var(--red); font-style:italic; margin-top:4px; }
+    .t-badge { display:none; align-items:center; gap:5px; color:var(--accent); font-size:14px; animation:pulse 1s infinite; }
     .t-badge.on { display:flex; }
 
     /* HISTORY */
@@ -178,8 +178,8 @@
     .hist-row::-webkit-scrollbar-thumb { background:var(--border); }
     .h-chip { flex-shrink:0; max-width:200px; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:5px 10px; cursor:pointer; transition:border-color .15s; }
     .h-chip:hover { border-color:var(--text3); }
-    .h-t { font-size:10px; color:var(--text2); margin-bottom:3px; }
-    .h-p { font-size:11px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .h-t { font-size:12px; color:var(--text2); margin-bottom:3px; }
+    .h-p { font-size:14px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
     /* MODAL */
     .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:100; }
@@ -187,14 +187,14 @@
     .modal { background:var(--surface); border:1px solid var(--border); border-radius:14px; width:560px; max-height:72vh; display:flex; flex-direction:column; box-shadow:0 20px 40px rgba(0,0,0,.4); }
     .m-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
     .m-title { font-size:14px; font-weight:500; color:var(--text); }
-    .m-close { background:transparent; border:none; color:var(--text3); font-size:18px; cursor:pointer; line-height:1; }
+    .m-close { background:transparent; border:none; color:var(--text3); font-size:22px; cursor:pointer; line-height:1; }
     .m-body { flex:1; overflow-y:auto; padding:16px 20px; }
-    .m-txt { font-size:12px; color:var(--text2); line-height:1.9; white-space:pre-wrap; word-break:break-word; }
+    .m-txt { font-size:15px; color:var(--text2); line-height:1.9; white-space:pre-wrap; word-break:break-word; }
     .m-foot { padding:12px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
-    .btn-ghost { padding:6px 14px; border-radius:var(--r); border:1px solid var(--border); background:transparent; color:var(--text2); font-size:12px; cursor:pointer; font-family:inherit; }
-    .btn-primary { padding:6px 14px; border-radius:var(--r); border:none; background:var(--accent); color:#fff; font-size:12px; font-weight:500; cursor:pointer; font-family:inherit; }
+    .btn-ghost { padding:6px 14px; border-radius:var(--r); border:1px solid var(--border); background:transparent; color:var(--text2); font-size:15px; cursor:pointer; font-family:inherit; }
+    .btn-primary { padding:6px 14px; border-radius:var(--r); border:none; background:var(--accent); color:#fff; font-size:15px; font-weight:500; cursor:pointer; font-family:inherit; }
 
-    #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--border); color:var(--text); padding:8px 16px; border-radius:var(--r); font-size:12px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:200; white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,.3); }
+    #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--border); color:var(--text); padding:8px 16px; border-radius:var(--r); font-size:15px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:200; white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,.3); }
     #toast.on { opacity:1; }
 
     ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
@@ -255,7 +255,7 @@
   <button id="tBtn" class="trans-btn" onclick="doTranslate()">
     <span id="spinEl" class="spin">↻</span>
     <span id="transBtnTxt" data-ko="번역 전송" data-en="Translate">번역 전송</span>
-    <span style="font-size:10px;opacity:.5;">⌘↵</span>
+    <span style="font-size:12px;opacity:.5;">⌘↵</span>
   </button>
 </div>
 
@@ -283,7 +283,7 @@
       <span class="ph-l" data-ko="원문 입력" data-en="Source Input">원문 입력</span>
       <div class="ph-r">
         <span id="wc" class="ph-meta">0</span>
-        <button style="background:transparent;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;" id="clearBtn" onclick="document.getElementById('src').value='';updateWC()" data-ko="지우기" data-en="Clear">지우기</button>
+        <button style="background:transparent;border:none;color:var(--text3);font-size:14px;cursor:pointer;font-family:inherit;" id="clearBtn" onclick="document.getElementById('src').value='';updateWC()" data-ko="지우기" data-en="Clear">지우기</button>
       </div>
     </div>
     <textarea id="src" data-placeholder-ko="음성 인식된 텍스트가 자동으로 입력됩니다.&#10;직접 붙여넣기도 가능합니다.&#10;&#10;Ctrl+Enter = 수동 번역" data-placeholder-en="Voice recognition text appears here automatically.&#10;You can also paste text directly.&#10;&#10;Ctrl+Enter = manual translate" placeholder="음성 인식된 텍스트가 자동으로 입력됩니다.&#10;직접 붙여넣기도 가능합니다.&#10;&#10;Ctrl+Enter = 수동 번역"></textarea>
@@ -295,8 +295,8 @@
         <span id="tBadge" class="t-badge" data-ko="번역 중..." data-en="Translating...">번역 중...</span>
         <span id="sentLbl" class="ph-ok"></span>
         <span id="lastTime" class="ph-meta"></span>
-        <button id="saveTranscriptBtn" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;padding:2px 8px;border-radius:5px;" onclick="saveTranscript()" title="영어 트랜스크립트 저장">⬇ EN</button>
-        <button style="background:transparent;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;" onclick="clearTranscriptLog()" data-ko="기록 지우기" data-en="Clear log">기록 지우기</button>
+        <button id="saveTranscriptBtn" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;font-family:inherit;padding:2px 8px;border-radius:5px;" onclick="saveTranscript()" title="영어 트랜스크립트 저장">⬇ EN</button>
+        <button style="background:transparent;border:none;color:var(--text3);font-size:14px;cursor:pointer;font-family:inherit;" onclick="clearTranscriptLog()" data-ko="기록 지우기" data-en="Clear log">기록 지우기</button>
       </div>
     </div>
     <div class="rtabs" id="rTabs"></div>
@@ -426,7 +426,7 @@
         const pane = document.createElement('div');
         pane.className = 'rpane' + (l===cur?' on':'');
         pane.id = 'pane-'+l;
-        pane.innerHTML = '<div style="padding:12px 16px;color:var(--text2);font-size:12px;font-style:italic;" id="hint-'+l+'">'+(uiLang==='ko'?'번역이 완료되면 여기에 누적됩니다':'Translations will accumulate here')+'</div><div id="log-'+l+'" style="padding:0 16px 16px;"></div>';
+        pane.innerHTML = '<div style="padding:12px 16px;color:var(--text2);font-size:15px;font-style:italic;" id="hint-'+l+'">'+(uiLang==='ko'?'번역이 완료되면 여기에 누적됩니다':'Translations will accumulate here')+'</div><div id="log-'+l+'" style="padding:0 16px 16px;"></div>';
         document.getElementById('rPanes').appendChild(pane);
       }
     });
