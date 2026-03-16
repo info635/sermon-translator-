@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    :root { --fs:22px; --topbar:80px; --bottombar:72px; }
+    :root { --fs:26px; --topbar:90px; --bottombar:72px; }
 
     /* ── THEMES ── */
     [data-theme="dark"] {
@@ -94,10 +94,10 @@
 
     /* 로고 */
     .tb-logo { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-    .tb-logo img { width:26px; height:26px; border-radius:6px; object-fit:cover; }
+    .tb-logo img { width:39px; height:39px; border-radius:9px; object-fit:cover; }
     .tb-logo-txt { display:flex; flex-direction:column; gap:1px; }
-    .tb-logo-title { font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; line-height:1; color:var(--text); font-family:'Noto Sans KR',sans-serif; }
-    .tb-logo-sub { font-size:8px; color:var(--text2); letter-spacing:.05em; line-height:1; font-family:'Noto Sans KR',sans-serif; }
+    .tb-logo-title { font-size:17px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; line-height:1; color:var(--text); font-family:'Noto Sans KR',sans-serif; }
+    .tb-logo-sub { font-size:12px; color:var(--text2); letter-spacing:.05em; line-height:1; font-family:'Noto Sans KR',sans-serif; }
 
     /* 언어 배지 — 작게 */
     .lang-badge {
@@ -106,7 +106,7 @@
       border-radius: 20px;
       background: var(--accent-dim);
       border: 1px solid var(--accent-bar);
-      font-size: 11px; font-weight: 600;
+      font-size: 14px; font-weight: 600;
       color: var(--accent);
       font-family: 'Noto Sans KR', sans-serif;
       white-space: nowrap;
@@ -119,7 +119,7 @@
       border-radius: 20px;
       border: 1px solid var(--border);
       background: var(--surface2);
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text2);
       font-family: 'Noto Sans KR', sans-serif;
       white-space: nowrap;
@@ -150,7 +150,7 @@
       border-radius: 5px; border: none;
       background: transparent;
       color: var(--text2);
-      font-size: 11px; font-weight: 500;
+      font-size: 14px; font-weight: 500;
       cursor: pointer; font-family: 'Noto Sans KR',sans-serif;
       transition: all .15s;
       -webkit-tap-highlight-color: transparent;
@@ -169,7 +169,7 @@
       border: 1px solid var(--border);
       background: transparent;
       color: var(--text2);
-      font-size: 15px;
+      font-size: 19px;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -222,13 +222,13 @@
       font-size: 24px;
     }
     .waiting-title {
-      font-size: 18px; font-weight: 500;
+      font-size: 22px; font-weight: 500;
       color: var(--text);
       text-align: center; line-height: 1.6;
       font-family: 'Noto Sans KR',sans-serif;
     }
     .waiting-sub {
-      font-size: 13px;
+      font-size: 16px;
       color: var(--text2);
       text-align: center; line-height: 1.8;
       font-family: 'Noto Sans KR',sans-serif;
@@ -279,7 +279,7 @@
     }
 
     .t-time {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text3);
       font-family: 'Noto Sans KR',sans-serif;
       font-weight: 300;
@@ -289,7 +289,7 @@
 
     .t-label {
       display: inline-flex; align-items: center; gap: 4px;
-      font-size: 10px;
+      font-size: 12px;
       color: var(--accent);
       font-family: 'Noto Sans KR',sans-serif;
       font-weight: 500;
@@ -333,7 +333,7 @@
       width: 48px; height: 44px;
       border: none; background: transparent;
       color: var(--text); font-family: 'Noto Sans KR',sans-serif;
-      font-size: 16px; font-weight: 500;
+      font-size: 20px; font-weight: 500;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -360,7 +360,7 @@
       border: 1px solid var(--border);
       background: var(--surface2);
       color: var(--text2);
-      font-size: 18px;
+      font-size: 22px;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -379,7 +379,7 @@
       transform: translateX(-50%) translateY(6px);
       background: var(--accent);
       color: #fff;
-      font-size: 13px; font-weight: 600;
+      font-size: 16px; font-weight: 600;
       font-family: 'Noto Sans KR',sans-serif;
       padding: 10px 20px;
       border-radius: 24px;
@@ -428,7 +428,7 @@
       border-radius: 2px;
       margin: 0 auto 20px;
     }
-    .modal-icon { font-size: 32px; text-align:center; margin-bottom:12px; }
+    .modal-icon { font-size: 40px; text-align:center; margin-bottom:12px; }
     .modal-title {
       font-size: 17px; font-weight: 600;
       color: var(--text); text-align:center;
@@ -436,7 +436,7 @@
       font-family: 'Noto Sans KR',sans-serif;
     }
     .modal-desc {
-      font-size: 14px; color: var(--text2);
+      font-size: 18px; color: var(--text2);
       text-align:center; line-height: 1.7;
       margin-bottom: 24px;
       font-family: 'Noto Sans KR',sans-serif;
@@ -449,7 +449,7 @@
       border: 1px solid var(--border);
       background: var(--surface2);
       color: var(--text2);
-      font-size: 15px; font-family: inherit;
+      font-size: 19px; font-family: inherit;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
@@ -459,7 +459,7 @@
       border: none;
       background: #f85149;
       color: #fff;
-      font-size: 15px; font-weight: 600;
+      font-size: 19px; font-weight: 600;
       font-family: inherit;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -485,7 +485,7 @@
       animation: spin 1s linear infinite;
     }
     @keyframes spin { to{transform:rotate(360deg)} }
-    .rc-msg  { font-size: 15px; color: var(--text2); font-family:'Noto Sans KR',sans-serif; }
+    .rc-msg  { font-size: 19px; color: var(--text2); font-family:'Noto Sans KR',sans-serif; }
     .rc-sub  { font-size: 12px; color: var(--accent); font-family:'Noto Sans KR',sans-serif; }
 
     ::-webkit-scrollbar { width: 0; height: 0; }
@@ -587,6 +587,7 @@
   /* ── Pusher 키 설정 ── */
   const PUSHER_KEY     = '9970878443f485296baf';
   const PUSHER_CLUSTER = 'mt1';
+
 
   /* ── 언어 정보 ── */
   const LANG_INFO = {
@@ -883,7 +884,3 @@
 </script>
 </body>
 </html>
-
-
-
-
