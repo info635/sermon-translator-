@@ -51,7 +51,7 @@
       color: var(--text); letter-spacing: .06em;
       text-transform: uppercase; line-height: 1;
     }
-    .logo-sub { font-size: 9px; color: var(--text3); letter-spacing: .08em; line-height: 1; }
+    .logo-sub { font-size: 9px; color: var(--text2); letter-spacing: .08em; line-height: 1; }
     .h-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
     /* Lang UI toggle */
@@ -237,6 +237,8 @@
   <button class="tog on" id="autoTog" onclick="toggleAuto()"></button>
   <span class="c-label" data-ko="자동 번역" data-en="Auto">자동 번역</span>
   <select id="gapSel" class="c-select">
+    <option value="300">0.3s ⚡</option>
+    <option value="500">0.5s ⚡</option>
     <option value="1000">1s</option>
     <option value="2000">2s</option>
     <option value="3000">3s</option>
@@ -501,38 +503,25 @@
 
   // ── 음성인식 ──
 
-  function dbg(msg) {
-    console.log('[MIC]', msg);
-    const b = document.getElementById('intBox');
-    b.textContent = '[DEBUG] ' + msg;
-    b.className = 'int-txt on';
-  }
-
   function toggleMic(){
-    dbg('toggleMic() called — SR=' + (SR ? SR.name || 'available' : 'NOT FOUND') + ', isListening=' + isListening);
     if (!SR) {
-      toast('이 브라우저는 음성인식을 지원하지 않습니다 (Chrome/Edge 필요)');
-      dbg('SR is null — browser not supported');
+      toast(uiLang==='ko'?'Chrome/Edge에서만 사용 가능합니다':'Chrome/Edge only');
       return;
     }
-    // HTTPS 체크
     if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-      toast('음성인식은 HTTPS에서만 작동합니다');
-      dbg('Not HTTPS: ' + location.protocol + '//' + location.hostname);
+      toast(uiLang==='ko'?'음성인식은 HTTPS에서만 작동합니다':'HTTPS required for mic');
       return;
     }
     isListening ? stopMic() : startMic();
   }
 
   function startMic(){
-    dbg('startMic() called');
-    try { recognition = new SR(); dbg('recognition object created OK'); }
-    catch(e) { toast('SpeechRecognition 생성 오류: ' + e.message); dbg('new SR() failed: ' + e.message); return; }
+    try { recognition = new SR(); }
+    catch(e) { toast((uiLang==='ko'?'마이크 오류: ':'Mic error: ') + e.message); return; }
 
     recognition.lang = srcLang==='ko' ? 'ko-KR' : 'en-US';
     recognition.continuous = true;
     recognition.interimResults = true;
-    dbg('lang=' + recognition.lang + ' continuous=true');
 
     recognition.onresult = e => {
       let interim = '';
@@ -545,7 +534,10 @@
           if (autoMode) {
             clearTimeout(silTimer);
             const gap = parseInt(document.getElementById('gapSel').value);
-            silTimer = setTimeout(()=>{ if(document.getElementById('src').value.trim()&&!isTranslating) doTranslate(); }, gap);
+            // 번역 중이면 타이머 새로 걸지 않음 (짧은 간격에서 중복 호출 방지)
+            if (!isTranslating) {
+              silTimer = setTimeout(()=>{ if(document.getElementById('src').value.trim()&&!isTranslating) doTranslate(); }, gap);
+            }
           }
         } else { interim += t; }
       }
@@ -555,8 +547,6 @@
     };
 
     recognition.onerror = e => {
-      console.error('SpeechRecognition error:', e.error, e);
-      dbg('onerror: ' + e.error);
       const msg = {
         'not-allowed':   uiLang==='ko'?'마이크 권한을 허용해주세요 (주소창 왼쪽 🔒 클릭)':'Allow microphone (click 🔒 in address bar)',
         'audio-capture': uiLang==='ko'?'마이크를 찾을 수 없습니다':'No microphone found',
@@ -567,12 +557,10 @@
     };
 
     recognition.onend = () => {
-      dbg('onend — isListening=' + isListening);
-      if (isListening) setTimeout(()=>{ try { recognition.start(); } catch(e){ dbg('restart failed: '+e.message); } }, 300);
+      if (isListening) setTimeout(()=>{ try { recognition.start(); } catch(e){} }, 300);
     };
 
     recognition.onstart = () => {
-      dbg('onstart fired ✓');
       document.getElementById('micBtn').classList.add('on');
       document.getElementById('micLabel').textContent = uiLang==='ko'?'녹음 중 — 중지':'Recording — Stop';
       document.getElementById('intBox').textContent = uiLang==='ko'?'● 마이크 준비됨':'● Mic ready';
@@ -582,10 +570,8 @@
     try {
       isListening = true;
       recognition.start();
-      dbg('recognition.start() called — waiting for onstart...');
     } catch(e) {
       isListening = false;
-      dbg('start() threw: ' + e.message);
       toast((uiLang==='ko'?'마이크 오류: ':'Mic error: ') + e.message);
     }
   }
