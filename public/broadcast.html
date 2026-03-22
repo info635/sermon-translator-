@@ -515,75 +515,213 @@
     isListening ? stopMic() : startMic();
   }
 
-  function startMic(){
-    try { recognition = new SR(); }
-    catch(e) { toast((uiLang==='ko'?'마이크 오류: ':'Mic error: ') + e.message); return; }
+  // ═══════════════════════════════════════════════════
+  //  견고한 마이크 시스템 v3
+  //
+  //  핵심 문제 & 해결:
+  //  ① Chrome 60초 자동 중단
+  //     → onend 에서 새 인스턴스로 즉시 재시작
+  //
+  //  ② 이전 인스턴스 stop() 이 onend 를 또 발화
+  //     → 세대(generation) 카운터로 구버전 onend 무시
+  //     → recognition = null 먼저, stop() 나중에
+  //
+  //  ③ 재시작 실패 (onstart 미발화)
+  //     → watchdog: 2초 내 onstart 없으면 재시도
+  //
+  //  ④ 연속 오류로 무한 루프
+  //     → failCount 5회 초과 시 3초 쿨다운
+  //
+  //  ⑤ network / no-speech 등 비치명 오류
+  //     → 재시작 허용 (치명 오류만 완전 중단)
+  //
+  //  ⑥ 탭 숨김 후 복귀 / 온라인 복귀
+  //     → 이벤트에서 재시작
+  // ═══════════════════════════════════════════════════
 
-    recognition.lang = srcLang==='ko' ? 'ko-KR' : 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+  let micGen       = 0;      // 세대 카운터 — 구버전 콜백 무시용
+  let watchdogTmr  = null;   // onstart 미감지 타이머
+  let failCount    = 0;      // 연속 실패 횟수
+  let micRestarting= false;  // 재시작 중복 방지
 
-    recognition.onresult = e => {
+  function startMic() {
+    if (micRestarting) return;
+    micRestarting = true;
+
+    const myGen = ++micGen; // 이 인스턴스의 세대
+
+    // ── 이전 인스턴스 정리 ──
+    // recognition = null 먼저! → 이후 stop() 의 onend 는 myGen 체크로 무시됨
+    const oldRec = recognition;
+    recognition  = null;
+    if (oldRec) { try { oldRec.stop(); } catch(e){} }
+
+    // ── 새 인스턴스 생성 ──
+    let rec;
+    try { rec = new SR(); }
+    catch(e) {
+      micRestarting = false;
+      isListening   = false;
+      setMicUI(false);
+      toast((uiLang==='ko'?'마이크 오류: ':'Mic error: ') + e.message);
+      return;
+    }
+
+    rec.lang            = srcLang === 'ko' ? 'ko-KR' : 'en-US';
+    rec.continuous      = true;
+    rec.interimResults  = true;
+    rec.maxAlternatives = 1;
+
+    // ── Watchdog: 2초 내 onstart 없으면 재시도 ──
+    clearTimeout(watchdogTmr);
+    watchdogTmr = setTimeout(() => {
+      if (!isListening || micGen !== myGen) return;
+      console.warn('[MIC] watchdog: onstart timeout — retrying');
+      micRestarting = false;
+      scheduleRestart(300);
+    }, 2000);
+
+    // ── 음성 결과 ──
+    rec.onresult = e => {
+      if (micGen !== myGen) return; // 구버전 무시
+      failCount = 0;
       let interim = '';
-      for (let i=e.resultIndex; i<e.results.length; i++) {
-        const t = e.results[i][0].transcript;
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const txt = e.results[i][0].transcript;
         if (e.results[i].isFinal) {
           const cur = document.getElementById('src').value;
-          document.getElementById('src').value = (cur+' '+t).trim();
+          document.getElementById('src').value = (cur + ' ' + txt).trim();
           updateWC();
           if (autoMode) {
             clearTimeout(silTimer);
             const gap = parseInt(document.getElementById('gapSel').value);
-            // 번역 중이면 타이머 새로 걸지 않음 (짧은 간격에서 중복 호출 방지)
             if (!isTranslating) {
-              silTimer = setTimeout(()=>{ if(document.getElementById('src').value.trim()&&!isTranslating) doTranslate(); }, gap);
+              silTimer = setTimeout(() => {
+                if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
+              }, gap);
             }
           }
-        } else { interim += t; }
+        } else { interim += txt; }
       }
       const b = document.getElementById('intBox');
-      if (interim) { b.textContent='● '+interim; b.className='int-txt on'; }
-      else { b.textContent=uiLang==='ko'?'✓ 인식 중...':'✓ Listening...'; b.className='int-txt on'; }
+      if (interim) { b.textContent = '● ' + interim; b.className = 'int-txt on'; }
+      else { b.textContent = uiLang==='ko' ? '✓ 인식 중...' : '✓ Listening...'; b.className = 'int-txt on'; }
     };
 
-    recognition.onerror = e => {
-      const msg = {
-        'not-allowed':   uiLang==='ko'?'마이크 권한을 허용해주세요 (주소창 왼쪽 🔒 클릭)':'Allow microphone (click 🔒 in address bar)',
-        'audio-capture': uiLang==='ko'?'마이크를 찾을 수 없습니다':'No microphone found',
-        'network':       uiLang==='ko'?'네트워크 오류 — HTTPS 필요':'Network error — HTTPS required',
-        'service-not-allowed': uiLang==='ko'?'음성인식 서비스 차단됨 (HTTPS 필요)':'Speech service blocked — HTTPS required',
+    // ── 오류 처리 ──
+    rec.onerror = e => {
+      if (micGen !== myGen) return;
+      console.warn('[MIC] onerror:', e.error);
+
+      // 치명적 오류 → 완전 중단
+      const fatalMsg = {
+        'not-allowed':         uiLang==='ko' ? '마이크 권한을 허용해주세요 (주소창 🔒 클릭)' : 'Allow microphone (click 🔒)',
+        'audio-capture':       uiLang==='ko' ? '마이크를 찾을 수 없습니다' : 'No microphone found',
+        'service-not-allowed': uiLang==='ko' ? '음성인식 서비스 차단됨' : 'Speech service blocked',
       }[e.error];
-      if (msg) { toast(msg); stopMic(); }
+
+      if (fatalMsg) { toast(fatalMsg); stopMic(); return; }
+
+      // 비치명 오류 (network, no-speech, aborted 등) → onend 에서 재시작
+      failCount++;
     };
 
-    recognition.onend = () => {
-      if (isListening) setTimeout(()=>{ try { recognition.start(); } catch(e){} }, 300);
+    // ── 종료 감지 → 재시작 ──
+    rec.onend = () => {
+      clearTimeout(watchdogTmr);
+      micRestarting = false;
+
+      if (!isListening) return;        // 사용자가 수동으로 멈춘 경우
+      if (micGen !== myGen) return;    // 구버전 인스턴스의 onend → 무시
+
+      console.log('[MIC] onend gen=' + myGen + ' failCount=' + failCount);
+
+      if (failCount >= 5) {
+        // 연속 5회 실패 → 3초 쿨다운 후 재시작
+        failCount = 0;
+        setIntBox('⏸ ' + (uiLang==='ko' ? '잠시 후 재연결...' : 'Reconnecting soon...'));
+        scheduleRestart(3000);
+      } else {
+        scheduleRestart(150); // 정상 재시작 (Chrome 60초 등)
+      }
     };
 
-    recognition.onstart = () => {
-      document.getElementById('micBtn').classList.add('on');
-      document.getElementById('micLabel').textContent = uiLang==='ko'?'녹음 중 — 중지':'Recording — Stop';
-      document.getElementById('intBox').textContent = uiLang==='ko'?'● 마이크 준비됨':'● Mic ready';
-      document.getElementById('intBox').className = 'int-txt on';
+    // ── 시작 확인 ──
+    rec.onstart = () => {
+      clearTimeout(watchdogTmr);
+      micRestarting = false;
+      failCount = 0;
+      recognition = rec; // 정상 시작된 인스턴스를 저장
+      setMicUI(true);
+      setIntBox('● ' + (uiLang==='ko' ? '마이크 준비됨' : 'Mic ready'));
+      console.log('[MIC] onstart gen=' + myGen);
     };
 
+    // ── 실제 시작 ──
     try {
-      isListening = true;
-      recognition.start();
+      recognition  = rec;
+      isListening  = true;
+      rec.start();
+      micRestarting = false;
     } catch(e) {
-      isListening = false;
-      toast((uiLang==='ko'?'마이크 오류: ':'Mic error: ') + e.message);
+      micRestarting = false;
+      clearTimeout(watchdogTmr);
+      // AbortError 등 → 잠시 후 재시도
+      if (isListening) scheduleRestart(500);
     }
   }
 
-  function stopMic(){
-    isListening=false; clearTimeout(silTimer);
-    if(recognition){try{recognition.stop();}catch(e){} recognition=null;}
-    document.getElementById('micBtn').classList.remove('on');
-    document.getElementById('micLabel').textContent=uiLang==='ko'?'녹음 시작':'Start Recording';
-    document.getElementById('intBox').textContent=uiLang==='ko'?'음성 인식이 중지되었습니다':'Voice recognition stopped';
-    document.getElementById('intBox').className='int-txt';
+  function scheduleRestart(delayMs) {
+    if (!isListening) return;
+    setTimeout(() => { if (isListening) startMic(); }, delayMs);
   }
+
+  function setMicUI(on) {
+    document.getElementById('micBtn').classList.toggle('on', on);
+    document.getElementById('micLabel').textContent = on
+      ? (uiLang==='ko' ? '녹음 중 — 중지' : 'Recording — Stop')
+      : (uiLang==='ko' ? '녹음 시작' : 'Start Recording');
+  }
+
+  function setIntBox(msg) {
+    const b = document.getElementById('intBox');
+    b.textContent = msg;
+    b.className = 'int-txt on';
+  }
+
+  function stopMic() {
+    isListening   = false;
+    micRestarting = false;
+    failCount     = 0;
+    clearTimeout(silTimer);
+    clearTimeout(watchdogTmr);
+    ++micGen; // 모든 구버전 콜백 무효화
+    const old = recognition;
+    recognition = null;
+    if (old) { try { old.stop(); } catch(e){} }
+    setMicUI(false);
+    const b = document.getElementById('intBox');
+    b.textContent = uiLang==='ko' ? '음성 인식이 중지되었습니다' : 'Voice recognition stopped';
+    b.className = 'int-txt';
+  }
+
+  // 탭 복귀 시 재시작
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && isListening) {
+      console.log('[MIC] tab visible — restart');
+      micRestarting = false;
+      scheduleRestart(300);
+    }
+  });
+
+  // 온라인 복귀 시 재시작
+  window.addEventListener('online', () => {
+    if (isListening) {
+      console.log('[MIC] online — restart');
+      micRestarting = false;
+      scheduleRestart(500);
+    }
+  });
 
   function toggleAuto(){
     autoMode=!autoMode;
