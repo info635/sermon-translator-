@@ -516,47 +516,38 @@
   }
 
   // ═══════════════════════════════════════════════════
-  //  견고한 마이크 시스템 v3
+  //  마이크 시스템 v4 — 4가지 버그 수정
   //
-  //  핵심 문제 & 해결:
-  //  ① Chrome 60초 자동 중단
-  //     → onend 에서 새 인스턴스로 즉시 재시작
+  //  수정 1: restartTimer 단일화
+  //    scheduleRestart 전 clearTimeout → 복수 타이머 방지
   //
-  //  ② 이전 인스턴스 stop() 이 onend 를 또 발화
-  //     → 세대(generation) 카운터로 구버전 onend 무시
-  //     → recognition = null 먼저, stop() 나중에
+  //  수정 2: micRestarting을 onstart까지 유지
+  //    rec.start() 후 즉시 해제 X → 중복 startMic 차단
   //
-  //  ③ 재시작 실패 (onstart 미발화)
-  //     → watchdog: 2초 내 onstart 없으면 재시도
+  //  수정 3: failCount/쿨다운 제거
+  //    침묵(기도) 중 no-speech 반복 → 3초 멈춤 문제 해결
+  //    지수 백오프로 교체 (150→300→600ms, 최대 2초)
   //
-  //  ④ 연속 오류로 무한 루프
-  //     → failCount 5회 초과 시 3초 쿨다운
-  //
-  //  ⑤ network / no-speech 등 비치명 오류
-  //     → 재시작 허용 (치명 오류만 완전 중단)
-  //
-  //  ⑥ 탭 숨김 후 복귀 / 온라인 복귀
-  //     → 이벤트에서 재시작
+  //  수정 4: audio-capture를 치명 오류에서 제외
+  //    재시작 중 일시적 audio-capture → stopMic() 방지
   // ═══════════════════════════════════════════════════
 
-  let micGen       = 0;      // 세대 카운터 — 구버전 콜백 무시용
-  let watchdogTmr  = null;   // onstart 미감지 타이머
-  let failCount    = 0;      // 연속 실패 횟수
-  let micRestarting= false;  // 재시작 중복 방지
+  let micGen       = 0;
+  let watchdogTmr  = null;
+  let restartTimer = null;   // 단일 재시작 타이머
+  let micRestarting= false;
+  let retryDelay   = 150;    // 지수 백오프 시작값
 
   function startMic() {
     if (micRestarting) return;
     micRestarting = true;
 
-    const myGen = ++micGen; // 이 인스턴스의 세대
+    const myGen = ++micGen;
 
-    // ── 이전 인스턴스 정리 ──
-    // recognition = null 먼저! → 이후 stop() 의 onend 는 myGen 체크로 무시됨
     const oldRec = recognition;
     recognition  = null;
     if (oldRec) { try { oldRec.stop(); } catch(e){} }
 
-    // ── 새 인스턴스 생성 ──
     let rec;
     try { rec = new SR(); }
     catch(e) {
@@ -572,19 +563,17 @@
     rec.interimResults  = true;
     rec.maxAlternatives = 1;
 
-    // ── Watchdog: 2초 내 onstart 없으면 재시도 ──
     clearTimeout(watchdogTmr);
     watchdogTmr = setTimeout(() => {
       if (!isListening || micGen !== myGen) return;
-      console.warn('[MIC] watchdog: onstart timeout — retrying');
+      console.warn('[MIC] watchdog timeout — retry');
       micRestarting = false;
       scheduleRestart(300);
-    }, 2000);
+    }, 3000);
 
-    // ── 음성 결과 ──
     rec.onresult = e => {
-      if (micGen !== myGen) return; // 구버전 무시
-      failCount = 0;
+      if (micGen !== myGen) return;
+      retryDelay = 150;
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const txt = e.results[i][0].transcript;
@@ -608,72 +597,59 @@
       else { b.textContent = uiLang==='ko' ? '✓ 인식 중...' : '✓ Listening...'; b.className = 'int-txt on'; }
     };
 
-    // ── 오류 처리 ──
     rec.onerror = e => {
       if (micGen !== myGen) return;
       console.warn('[MIC] onerror:', e.error);
-
-      // 치명적 오류 → 완전 중단
+      // 권한 거부, 서비스 차단만 완전 중단
       const fatalMsg = {
         'not-allowed':         uiLang==='ko' ? '마이크 권한을 허용해주세요 (주소창 🔒 클릭)' : 'Allow microphone (click 🔒)',
-        'audio-capture':       uiLang==='ko' ? '마이크를 찾을 수 없습니다' : 'No microphone found',
         'service-not-allowed': uiLang==='ko' ? '음성인식 서비스 차단됨' : 'Speech service blocked',
       }[e.error];
-
       if (fatalMsg) { toast(fatalMsg); stopMic(); return; }
-
-      // 비치명 오류 (network, no-speech, aborted 등) → onend 에서 재시작
-      failCount++;
+      // 나머지(network, no-speech, audio-capture, aborted) → onend에서 재시작
     };
 
-    // ── 종료 감지 → 재시작 ──
     rec.onend = () => {
       clearTimeout(watchdogTmr);
       micRestarting = false;
-
-      if (!isListening) return;        // 사용자가 수동으로 멈춘 경우
-      if (micGen !== myGen) return;    // 구버전 인스턴스의 onend → 무시
-
-      console.log('[MIC] onend gen=' + myGen + ' failCount=' + failCount);
-
-      if (failCount >= 5) {
-        // 연속 5회 실패 → 3초 쿨다운 후 재시작
-        failCount = 0;
-        setIntBox('⏸ ' + (uiLang==='ko' ? '잠시 후 재연결...' : 'Reconnecting soon...'));
-        scheduleRestart(3000);
-      } else {
-        scheduleRestart(150); // 정상 재시작 (Chrome 60초 등)
-      }
+      if (!isListening) return;
+      if (micGen !== myGen) return;
+      console.log('[MIC] onend gen=' + myGen + ' retryDelay=' + retryDelay);
+      scheduleRestart(retryDelay);
+      retryDelay = Math.min(retryDelay * 2, 2000); // 지수 백오프 (최대 2초)
     };
 
-    // ── 시작 확인 ──
+    // micRestarting은 onstart에서만 해제 (수정 2 핵심)
     rec.onstart = () => {
       clearTimeout(watchdogTmr);
       micRestarting = false;
-      failCount = 0;
-      recognition = rec; // 정상 시작된 인스턴스를 저장
+      retryDelay = 150;
+      recognition = rec;
       setMicUI(true);
       setIntBox('● ' + (uiLang==='ko' ? '마이크 준비됨' : 'Mic ready'));
       console.log('[MIC] onstart gen=' + myGen);
     };
 
-    // ── 실제 시작 ──
     try {
-      recognition  = rec;
-      isListening  = true;
+      recognition = rec;
+      isListening = true;
       rec.start();
-      micRestarting = false;
+      // micRestarting = false 여기서 하지 않음! onstart에서만 해제
     } catch(e) {
       micRestarting = false;
       clearTimeout(watchdogTmr);
-      // AbortError 등 → 잠시 후 재시도
+      console.warn('[MIC] start() threw:', e.message);
       if (isListening) scheduleRestart(500);
     }
   }
 
+  // 단일 타이머 — 항상 기존 취소 후 새로 예약 (수정 1 핵심)
   function scheduleRestart(delayMs) {
     if (!isListening) return;
-    setTimeout(() => { if (isListening) startMic(); }, delayMs);
+    clearTimeout(restartTimer);
+    restartTimer = setTimeout(() => {
+      if (isListening && !micRestarting) startMic();
+    }, delayMs);
   }
 
   function setMicUI(on) {
@@ -692,10 +668,11 @@
   function stopMic() {
     isListening   = false;
     micRestarting = false;
-    failCount     = 0;
+    retryDelay    = 150;
     clearTimeout(silTimer);
     clearTimeout(watchdogTmr);
-    ++micGen; // 모든 구버전 콜백 무효화
+    clearTimeout(restartTimer);
+    ++micGen;
     const old = recognition;
     recognition = null;
     if (old) { try { old.stop(); } catch(e){} }
@@ -705,22 +682,14 @@
     b.className = 'int-txt';
   }
 
-  // 탭 복귀 시 재시작
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && isListening) {
-      console.log('[MIC] tab visible — restart');
-      micRestarting = false;
       scheduleRestart(300);
     }
   });
 
-  // 온라인 복귀 시 재시작
   window.addEventListener('online', () => {
-    if (isListening) {
-      console.log('[MIC] online — restart');
-      micRestarting = false;
-      scheduleRestart(500);
-    }
+    if (isListening) scheduleRestart(500);
   });
 
   function toggleAuto(){
