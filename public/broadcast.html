@@ -345,7 +345,7 @@
   };
 
   let srcLang='en', activeLangs=new Set(['ko']);
-  let isTranslating=false, refText='', histArr=[];
+  let isTranslating=false, refText='', histArr=[], glossaryTerms=[];
   let uiLang = localStorage.getItem('ui-lang') || 'ko';
 
   // 음성인식 변수 — setUILang이 isListening을 참조하므로 먼저 선언
@@ -453,27 +453,92 @@
   }
 
   // ── 참고자료 ──
-  async function handleFile(e) {
-    const file=e.target.files[0]; if(!file) return;
-    const ext=file.name.split('.').pop().toLowerCase();
-    document.getElementById('refTxt').textContent=uiLang==='ko'?'로딩 중...':'Loading...';
-    try {
-      if(ext==='txt') refText=await file.text();
-      else if(ext==='pdf') refText=await extractPDF(file);
-      else if(ext==='docx') refText=await extractDOCX(file);
-      else { toast('PDF, DOCX, TXT'); return; }
-      if(refText.length>8000) refText=refText.slice(0,8000)+'\n...(생략)';
-      document.getElementById('refBtn').className='file-btn loaded';
-      document.getElementById('refTxt').textContent=file.name.slice(0,20)+(file.name.length>20?'…':'');
-      document.getElementById('refView').style.display='';
-      document.getElementById('refDel').style.display='';
-      document.getElementById('mTxt').textContent=refText;
-      toast(uiLang==='ko'?'참고자료 로드 완료':'Reference loaded');
-    } catch(err) {
-      document.getElementById('refTxt').textContent=uiLang==='ko'?'참고자료':'Reference';
-      toast('Error: '+err.message);
+  // 용어집 파싱: 각 줄에서 단어/번역쌍 추출
+  // 지원 형식: "word = 번역", "word : 번역", "word - 번역", "word  번역", "word"
+  function parseGlossary(rawText) {
+    const terms = [];
+    const lines = rawText.split(/\n|\r/).map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      if (line.startsWith('#') || line.startsWith('//')) continue; // 주석 무시
+      // 구분자: =, :, -, 탭, 2개 이상 공백
+      const m = line.match(/^(.+?)\s*[=:\-\t]\s*(.+)$/) ||
+                line.match(/^(.+?)\s{2,}(.+)$/);
+      if (m) {
+        terms.push({ src: m[1].trim(), tgt: m[2].trim() });
+      } else if (line.length > 0 && line.length < 60) {
+        terms.push({ src: line, tgt: null }); // 번역어 없는 단어 (음성인식 힌트용)
+      }
     }
-    e.target.value='';
+    return terms;
+  }
+
+  function glossaryToRefText(terms) {
+    if (!terms.length) return '';
+    const pairs = terms
+      .filter(t => t.tgt)
+      .map(t => t.src + ' = ' + t.tgt)
+      .join('\n');
+    const words = terms.filter(t => !t.tgt).map(t => t.src).join(', ');
+    let out = '';
+    if (pairs) out += '번역 용어집 (반드시 아래 번역어를 사용할 것):\n' + pairs;
+    if (words) out += (out ? '\n\n' : '') + '주요 키워드: ' + words;
+    return out;
+  }
+
+  async function handleFile(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const ext  = file.name.split('.').pop().toLowerCase();
+    document.getElementById('refTxt').textContent = uiLang==='ko' ? '로딩 중...' : 'Loading...';
+    try {
+      let rawText = '';
+      if (ext === 'txt')       rawText = await file.text();
+      else if (ext === 'pdf')  rawText = await extractPDF(file);
+      else if (ext === 'docx') rawText = await extractDOCX(file);
+      else { toast('PDF, DOCX, TXT'); e.target.value=''; return; }
+
+      glossaryTerms = parseGlossary(rawText);
+      refText = glossaryToRefText(glossaryTerms);
+
+      const termCount = glossaryTerms.length;
+      if (termCount === 0) {
+        toast(uiLang==='ko' ? '용어를 찾을 수 없습니다 (줄마다 단어를 입력하세요)' : 'No terms found');
+        e.target.value=''; return;
+      }
+
+      // 음성인식 힌트 등록
+      applyGrammarHints(glossaryTerms.map(t => t.src));
+
+      document.getElementById('refBtn').className = 'file-btn loaded';
+      document.getElementById('refTxt').textContent =
+        (uiLang==='ko' ? termCount+'개 용어' : termCount+' terms') +
+        ' — ' + file.name.slice(0,15) + (file.name.length>15?'…':'');
+      document.getElementById('refView').style.display = '';
+      document.getElementById('refDel').style.display  = '';
+
+      // 미리보기 텍스트
+      const preview = glossaryTerms.slice(0,30).map(t => t.tgt ? t.src+' → '+t.tgt : t.src).join('\n')
+        + (glossaryTerms.length > 30 ? '\n...(+' + (glossaryTerms.length-30) + ' more)' : '');
+      document.getElementById('mTxt').textContent = preview;
+
+      toast(uiLang==='ko' ? '✓ '+termCount+'개 용어 로드됨' : '✓ '+termCount+' terms loaded');
+    } catch(err) {
+      document.getElementById('refTxt').textContent = uiLang==='ko' ? '참고자료' : 'Reference';
+      toast((uiLang==='ko'?'오류: ':'Error: ') + err.message);
+      console.error('handleFile error:', err);
+    }
+    e.target.value = '';
+  }
+
+  // Web Speech API 문법 힌트 등록
+  function applyGrammarHints(keywords) {
+    if (!isListening || !recognition || !window.SpeechGrammarList) return;
+    try {
+      const list = new SpeechGrammarList();
+      const grammar = '#JSGF V1.0; grammar terms; public <term> = '
+        + keywords.map(k => k.toLowerCase()).join(' | ') + ';';
+      list.addFromString(grammar, 1);
+      recognition.grammars = list;
+    } catch(e) { /* 미지원 브라우저 무시 */ }
   }
 
   async function extractPDF(file) {
@@ -490,12 +555,13 @@
   }
 
   function clearRef() {
-    refText='';
+    refText = '';
+    glossaryTerms = [];
     document.getElementById('refBtn').className='file-btn';
-    document.getElementById('refTxt').textContent=uiLang==='ko'?'참고자료':'Reference';
+    document.getElementById('refTxt').textContent = uiLang==='ko' ? '참고자료' : 'Reference';
     document.getElementById('refView').style.display='none';
     document.getElementById('refDel').style.display='none';
-    toast(uiLang==='ko'?'참고자료 삭제됨':'Reference cleared');
+    toast(uiLang==='ko' ? '참고자료 삭제됨' : 'Reference cleared');
   }
 
   function showModal(){document.getElementById('modalBg').classList.add('on');}
@@ -627,6 +693,8 @@
       recognition = rec;
       setMicUI(true);
       setIntBox('● ' + (uiLang==='ko' ? '마이크 준비됨' : 'Mic ready'));
+      // 용어집 있으면 음성인식 힌트 적용
+      if (glossaryTerms.length > 0) applyGrammarHints(glossaryTerms.map(t => t.src));
       console.log('[MIC] onstart gen=' + myGen);
     };
 
