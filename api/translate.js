@@ -26,7 +26,12 @@ module.exports = async (req, res) => {
     useTLS:  true
   });
 
-  const refSection = refText ? `\n\n[참고자료]\n${refText}\n[참고자료 끝]\n` : '';
+  // 용어집을 언어별 지시문으로 변환
+  function buildGlossarySection(refText, targetLang) {
+    if (!refText) return '';
+    // 이미 파싱된 용어집 형식 (broadcast.html에서 전송됨)
+    return `\n\n[용어집 — 반드시 아래 번역어를 일관되게 사용할 것]\n${refText}\n[용어집 끝]\n`;
+  }
   const src = srcLang || 'en';
   const SRC_NAME = { en: 'English', ko: '한국어' };
 
@@ -72,9 +77,9 @@ module.exports = async (req, res) => {
     return filtered.join('\n').trim();
   }
 
-  // 대상 언어별 설정 빌더
   function buildConfig(targetLang) {
     const srcName = SRC_NAME[src] || 'English';
+    const refSection = buildGlossarySection(refText, targetLang);
 
     const targets = {
       ko: {
