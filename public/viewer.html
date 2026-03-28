@@ -65,12 +65,12 @@
     .topbar {
       position: fixed;
       top: 0; left: 0; right: 0;
-      top: env(safe-area-inset-top, 0px);
-      height: var(--topbar);
+      height: calc(var(--topbar) + env(safe-area-inset-top, 0px));
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      padding: 6px 14px;
+      justify-content: flex-end;
+      padding: 6px 14px calc(6px);
+      padding-top: calc(6px + env(safe-area-inset-top, 0px));
       gap: 5px;
       background: var(--bar-bg);
       border-bottom: 1px solid var(--border);
@@ -182,7 +182,7 @@
     ════════════════════════════ */
     .offline-bar {
       position: fixed;
-      top: calc(var(--topbar) + env(safe-area-inset-top, 0px));
+      top: calc(var(--topbar) + env(safe-area-inset-top, 0px) + 8px);
       left: 0; right: 0;
       background: #2a1800;
       border-bottom: 1px solid #5a3800;
@@ -199,7 +199,7 @@
        SCROLL AREA
     ════════════════════════════ */
     .scroll-area {
-      padding-top: calc(var(--topbar) + env(safe-area-inset-top, 0px) + 4px);
+      padding-top: calc(var(--topbar) + env(safe-area-inset-top, 0px) + 8px);
       padding-bottom: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px) + 4px);
       min-height: 100dvh;
     }
@@ -369,34 +369,6 @@
     .bb-btn:active { background: var(--accent-dim); }
     .bb-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-bar); }
 
-    /* ════════════════════════════
-       NEW TRANSLATION TOAST
-    ════════════════════════════ */
-    .new-toast {
-      position: fixed;
-      bottom: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px) + 12px);
-      left: 50%;
-      transform: translateX(-50%) translateY(6px);
-      background: var(--accent);
-      color: #fff;
-      font-size: 16px; font-weight: 600;
-      font-family: 'Noto Sans KR',sans-serif;
-      padding: 10px 20px;
-      border-radius: 24px;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity .22s, transform .22s;
-      pointer-events: none;
-      z-index: 101;
-      white-space: nowrap;
-      box-shadow: 0 6px 20px rgba(0,0,0,.35);
-      -webkit-tap-highlight-color: transparent;
-    }
-    .new-toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-      pointer-events: auto;
-    }
 
     /* ════════════════════════════
        CLEAR MODAL
@@ -560,7 +532,6 @@
 </div>
 
 <!-- 새 번역 토스트 -->
-<div class="new-toast" id="newToast" onclick="scrollToLatest()"></div>
 
 <!-- 삭제 확인 모달 (bottom sheet) -->
 <div class="modal-bg" id="modalBg" onclick="hideModal(event)">
@@ -584,10 +555,9 @@
 </div>
 
 <script>
-  /* ── Pusher 키 설정 ── */
+  /* ── Pusher 설정 ── */
   const PUSHER_KEY     = '9970878443f485296baf';
   const PUSHER_CLUSTER = 'mt1';
-
 
   /* ── 언어 정보 ── */
   const LANG_INFO = {
@@ -611,7 +581,6 @@
   const T = {
     waitingTitle: { ko:'번역 대기 중', en:'Waiting for Translation' },
     waitingSub:   { ko:'설교 번역이 시작되면\n여기에 자동으로 표시됩니다', en:'Translations will appear here\nautomatically when the sermon begins' },
-    newToast:     { ko:'↓ 새 번역이 도착했습니다', en:'↓ New translation arrived' },
     connecting:   { ko:'연결 중...', en:'Connecting...' },
     connected:    { ko:'실시간 연결됨', en:'Live' },
     disconnected: { ko:'연결 끊김', en:'Disconnected' },
@@ -650,7 +619,6 @@
     document.getElementById('waitingSub').innerHTML = t('waitingSub').replace('\n','<br>');
 
     // 토스트
-    document.getElementById('newToast').textContent = t('newToast');
 
     // 모달
     document.getElementById('modalTitle').textContent  = t('clearTitle');
@@ -821,17 +789,6 @@
     if (allItems.length > 50) allItems.shift();
     localStorage.setItem('sermon-transcript', JSON.stringify(allItems));
 
-    // 자동 스크롤이면 최신으로 이동, 아니면 토스트 표시
-    if (autoScroll) {
-      setTimeout(() => item.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-    } else {
-      const toast = document.getElementById('newToast');
-      toast.classList.remove('show');
-      void toast.offsetWidth;
-      toast.classList.add('show');
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => toast.classList.remove('show'), 5000);
-    }
   }
 
   /* ── 자동/수동 스크롤 ── */
@@ -849,16 +806,12 @@
   // 스크롤 감지 — 위로 올리면 자동 스크롤 일시 해제
   let userScrolling = false, scrollPauseTimer = null;
   window.addEventListener('scroll', () => {
-    const dist = document.body.scrollHeight - window.scrollY - window.innerHeight;
-    if (dist <= 120) {
-      document.getElementById('newToast').classList.remove('show');
-    }
+    // scroll tracking only
   }, { passive: true });
 
   function scrollToLatest() {
     const latest = document.querySelector('.t-item.latest');
     if (latest) latest.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    document.getElementById('newToast').classList.remove('show');
   }
 
   /* ── 삭제 모달 ── */
@@ -884,3 +837,7 @@
 </script>
 </body>
 </html>
+
+
+
+
