@@ -609,13 +609,16 @@
     const tabMine    = document.getElementById('tabMine');
     const tabBuiltin = document.getElementById('tabBuiltin');
     const glAddRow   = document.getElementById('glAddRow');
+    const glImport   = document.getElementById('glImportArea');
     const glExport   = document.getElementById('glExportBtn');
     const glSearch   = document.getElementById('glSearch');
     if (!tabMine) return; // 모달 아직 안 열림
     tabMine.classList.toggle('on',    tab==='mine');
     tabBuiltin.classList.toggle('on', tab==='builtin');
-    if (glAddRow) glAddRow.style.display    = tab==='mine' ? '' : 'none';
-    if (glExport) glExport.style.display    = tab==='mine' ? '' : 'none';
+    const showMine = tab === 'mine';
+    if (glAddRow) glAddRow.style.display  = showMine ? '' : 'none';
+    if (glImport) glImport.style.display  = showMine ? '' : 'none';
+    if (glExport) glExport.style.display  = showMine ? '' : 'none';
     if (glSearch) glSearch.value = '';
     renderGlossaryList();
   }
