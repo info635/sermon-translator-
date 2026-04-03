@@ -198,6 +198,38 @@
     #toast.on { opacity:1; }
 
     ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    /* ── 용어집 모달 ── */
+    .gl-modal { width:640px; max-height:80vh; }
+    .gl-tabs { display:flex; border-bottom:1px solid var(--border); padding:0 20px; gap:4px; }
+    .gl-tab { padding:10px 16px; font-size:13px; color:var(--text2); cursor:pointer;
+      border-bottom:2px solid transparent; font-family:inherit; background:none; border-top:none; border-left:none; border-right:none; }
+    .gl-tab.on { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+    .gl-add-row { display:flex; gap:8px; padding:14px 20px; border-bottom:1px solid var(--border); }
+    .gl-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
+      color:var(--text); font-size:13px; padding:7px 12px; font-family:inherit; outline:none; }
+    .gl-input:focus { border-color:var(--accent); }
+    .gl-add-btn { padding:7px 16px; border-radius:var(--r); border:none; background:var(--accent);
+      color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .gl-search-row { padding:10px 20px 6px; }
+    .gl-search { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
+      color:var(--text); font-size:13px; padding:7px 12px; font-family:inherit; outline:none; box-sizing:border-box; }
+    .gl-list { padding:0 20px 16px; overflow-y:auto; max-height:340px; }
+    .gl-item { display:flex; align-items:center; gap:10px; padding:9px 0;
+      border-bottom:1px solid var(--border); }
+    .gl-item:last-child { border-bottom:none; }
+    .gl-src { font-size:13px; color:var(--text); min-width:140px; font-weight:500; }
+    .gl-arr { color:var(--text3); font-size:12px; }
+    .gl-tgt { font-size:13px; color:var(--accent); flex:1; }
+    .gl-edit-input { flex:1; background:var(--surface2); border:1px solid var(--accent);
+      border-radius:5px; color:var(--text); font-size:13px; padding:4px 8px; font-family:inherit; outline:none; }
+    .gl-actions { display:flex; gap:6px; margin-left:auto; }
+    .gl-btn { background:transparent; border:1px solid var(--border); border-radius:5px;
+      color:var(--text2); font-size:12px; padding:3px 8px; cursor:pointer; font-family:inherit; }
+    .gl-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .gl-btn.del:hover { border-color:var(--red); color:var(--red); }
+    .gl-empty { text-align:center; color:var(--text3); font-size:13px; padding:32px 0; }
+    .gl-foot-info { font-size:12px; color:var(--text3); }
   </style>
 </head>
 <body>
@@ -248,6 +280,9 @@
   <div class="c-sep"></div>
   <button class="file-btn" id="refBtn" onclick="document.getElementById('fileInput').click()">
     <span>📎</span><span id="refTxt" data-ko="참고자료" data-en="Reference">참고자료</span>
+  </button>
+  <button class="file-btn" onclick="openGlossary()" title="용어집 관리">
+    <span>📚</span><span id="glossaryBtnTxt" data-ko="용어집" data-en="Glossary">용어집</span>
   </button>
   <button id="refView" style="display:none;" class="file-btn" onclick="showModal()" data-ko="보기" data-en="View">보기</button>
   <button id="refDel"  style="display:none;" class="file-btn" onclick="clearRef()" data-ko="삭제" data-en="Remove">삭제</button>
@@ -320,6 +355,39 @@
   </div>
 </div>
 
+<!-- 용어집 관리 모달 -->
+<div class="modal-bg" id="glossaryBg" onclick="closeGlossaryBg(event)">
+  <div class="modal gl-modal">
+    <div class="m-head">
+      <span class="m-title" id="glossaryTitle">📚 용어집 관리</span>
+      <button class="m-close" onclick="closeGlossary()">×</button>
+    </div>
+    <!-- 탭 -->
+    <div class="gl-tabs">
+      <button class="gl-tab on" id="tabMine"   onclick="switchTab('mine')">우리 교회 용어</button>
+      <button class="gl-tab"    id="tabBuiltin" onclick="switchTab('builtin')">내장 신학 용어</button>
+    </div>
+    <!-- 추가 폼 (내 용어 탭만) -->
+    <div class="gl-add-row" id="glAddRow">
+      <input class="gl-input" id="glSrcInput"  placeholder="영어 원문 (예: grace)" onkeydown="if(event.key==='Tab'){event.preventDefault();document.getElementById('glTgtInput').focus();}"/>
+      <input class="gl-input" id="glTgtInput"  placeholder="한국어 번역 (예: 은혜)"   onkeydown="if(event.key==='Enter')addGlossaryTerm();"/>
+      <button class="gl-add-btn" onclick="addGlossaryTerm()" id="glAddBtn">+ 추가</button>
+    </div>
+    <!-- 검색 -->
+    <div class="gl-search-row">
+      <input class="gl-search" id="glSearch" placeholder="🔍 검색..." oninput="renderGlossaryList()"/>
+    </div>
+    <!-- 목록 -->
+    <div class="gl-list" id="glList"></div>
+    <!-- 하단 -->
+    <div class="m-foot">
+      <span class="gl-foot-info" id="glInfo"></span>
+      <button class="btn-ghost" id="glExportBtn" onclick="exportGlossary()">⬇ 내보내기</button>
+      <button class="btn-ghost" onclick="closeGlossary()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -347,6 +415,237 @@
   let srcLang='en', activeLangs=new Set(['ko']);
   let isTranslating=false, refText='', histArr=[], glossaryTerms=[];
   let translationContext = []; // 최근 번역 문장 (컨텍스트 연속성용)
+
+  // ══════════════════════════════════════════
+  //  용어집 관리 시스템
+  //  - mine: 사용자 추가 용어 (localStorage)
+  //  - builtin: 내장 신학 용어 (읽기전용)
+  // ══════════════════════════════════════════
+
+  const BUILTIN_TERMS = [
+    {src:'justification',       tgt:'칭의 (의롭다 하심)'},
+    {src:'sanctification',      tgt:'성화'},
+    {src:'glorification',       tgt:'영화'},
+    {src:'regeneration',        tgt:'중생 (거듭남)'},
+    {src:'conversion',          tgt:'회심'},
+    {src:'repentance',          tgt:'회개'},
+    {src:'faith',               tgt:'믿음'},
+    {src:'grace',               tgt:'은혜'},
+    {src:'atonement',           tgt:'속죄'},
+    {src:'redemption',          tgt:'구속'},
+    {src:'propitiation',        tgt:'화목제물'},
+    {src:'reconciliation',      tgt:'화목'},
+    {src:'forgiveness of sins', tgt:'죄 사함'},
+    {src:'salvation',           tgt:'구원'},
+    {src:'election',            tgt:'선택 / 택하심'},
+    {src:'predestination',      tgt:'예정'},
+    {src:'sovereignty',         tgt:'주권'},
+    {src:'omnipotence',         tgt:'전능하심'},
+    {src:'omniscience',         tgt:'전지하심'},
+    {src:'omnipresence',        tgt:'편재하심'},
+    {src:'holiness',            tgt:'거룩하심'},
+    {src:'righteousness',       tgt:'공의'},
+    {src:'mercy',               tgt:'자비'},
+    {src:'lovingkindness',      tgt:'인자하심'},
+    {src:'Trinity',             tgt:'삼위일체'},
+    {src:'the Father',          tgt:'하나님 아버지'},
+    {src:'the Son',             tgt:'성자'},
+    {src:'the Holy Spirit',     tgt:'성령'},
+    {src:'incarnation',         tgt:'성육신'},
+    {src:'glory',               tgt:'영광'},
+    {src:'wrath',               tgt:'진노'},
+    {src:'kingdom of God',      tgt:'하나님 나라'},
+    {src:'Lord',                tgt:'주님'},
+    {src:'Savior',              tgt:'구주'},
+    {src:'Messiah',             tgt:'메시아'},
+    {src:'Christ',              tgt:'그리스도'},
+    {src:'resurrection',        tgt:'부활'},
+    {src:'ascension',           tgt:'승천'},
+    {src:'second coming',       tgt:'재림'},
+    {src:'cross',               tgt:'십자가'},
+    {src:'crucifixion',         tgt:'십자가 죽음'},
+    {src:'the blood of Christ', tgt:'그리스도의 보혈'},
+    {src:'sacrifice',           tgt:'희생 / 제사'},
+    {src:'indwelling',          tgt:'내주하심'},
+    {src:'filling',             tgt:'충만'},
+    {src:'fruit of the Spirit', tgt:'성령의 열매'},
+    {src:'gifts of the Spirit', tgt:'성령의 은사'},
+    {src:'conviction',          tgt:'죄를 깨닫게 하심'},
+    {src:'the Church',          tgt:'교회'},
+    {src:'congregation',        tgt:'회중 / 성도'},
+    {src:'baptism',             tgt:'세례'},
+    {src:'Lords Supper',       tgt:'성찬'},
+    {src:'communion',           tgt:'성찬'},
+    {src:'worship',             tgt:'예배'},
+    {src:'sermon',              tgt:'설교'},
+    {src:'pastor',              tgt:'목사'},
+    {src:'elder',               tgt:'장로'},
+    {src:'deacon',              tgt:'집사'},
+    {src:'fellowship',          tgt:'교제'},
+    {src:'ministry',            tgt:'사역'},
+    {src:'mission',             tgt:'선교'},
+    {src:'discipleship',        tgt:'제자도'},
+    {src:'stewardship',         tgt:'청지기 정신'},
+    {src:'Scripture',           tgt:'성경'},
+    {src:'the Word',            tgt:'말씀'},
+    {src:'the Word of God',     tgt:'하나님의 말씀'},
+    {src:'inspiration',         tgt:'영감'},
+    {src:'inerrancy',           tgt:'무오성'},
+    {src:'revelation',          tgt:'계시'},
+    {src:'covenant',            tgt:'언약'},
+    {src:'the Old Testament',   tgt:'구약'},
+    {src:'the New Testament',   tgt:'신약'},
+    {src:'the Gospel',          tgt:'복음'},
+    {src:'eternal life',        tgt:'영생'},
+    {src:'heaven',              tgt:'천국 / 하늘나라'},
+    {src:'hell',                tgt:'지옥'},
+    {src:'judgment',            tgt:'심판'},
+    {src:'the last day',        tgt:'마지막 날'},
+    {src:'beloved',             tgt:'사랑하는 여러분'},
+    {src:'brothers and sisters',tgt:'성도 여러분'},
+    {src:'saints',              tgt:'성도'},
+    {src:'Amen',                tgt:'아멘'},
+    {src:'Hallelujah',          tgt:'할렐루야'},
+  ];
+
+  let myTerms = JSON.parse(localStorage.getItem('woa-glossary') || '[]');
+  let currentGlTab = 'mine'; // 현재 탭
+
+  function saveMyTerms() {
+    localStorage.setItem('woa-glossary', JSON.stringify(myTerms));
+    // refText 업데이트 (번역 API에 전달)
+    updateRefTextFromGlossary();
+  }
+
+  function updateRefTextFromGlossary() {
+    // 사용자 용어만 refText에 반영 (내장 용어는 translate.js에 이미 탑재)
+    if (myTerms.length === 0) return;
+    const pairs = myTerms.map(t => t.src + ' = ' + t.tgt).join('\n');
+    if (!refText || refText.startsWith('번역 용어집')) {
+      refText = '번역 용어집 (반드시 아래 번역어를 사용할 것):\n' + pairs;
+    }
+  }
+
+  function openGlossary() {
+    updateRefTextFromGlossary();
+    document.getElementById('glossaryBg').classList.add('on');
+    switchTab('mine');
+  }
+  function closeGlossary() {
+    document.getElementById('glossaryBg').classList.remove('on');
+  }
+  function closeGlossaryBg(e) {
+    if (e.target === document.getElementById('glossaryBg')) closeGlossary();
+  }
+
+  function switchTab(tab) {
+    currentGlTab = tab;
+    document.getElementById('tabMine').classList.toggle('on',    tab==='mine');
+    document.getElementById('tabBuiltin').classList.toggle('on', tab==='builtin');
+    document.getElementById('glAddRow').style.display    = tab==='mine' ? '' : 'none';
+    document.getElementById('glExportBtn').style.display = tab==='mine' ? '' : 'none';
+    document.getElementById('glSearch').value = '';
+    renderGlossaryList();
+  }
+
+  function addGlossaryTerm() {
+    const src = document.getElementById('glSrcInput').value.trim();
+    const tgt = document.getElementById('glTgtInput').value.trim();
+    if (!src || !tgt) { toast(uiLang==='ko'?'영어와 한국어를 모두 입력해주세요':'Enter both fields'); return; }
+    // 중복 확인
+    if (myTerms.some(t => t.src.toLowerCase() === src.toLowerCase())) {
+      toast(uiLang==='ko'?'이미 등록된 용어입니다':'Already exists'); return;
+    }
+    myTerms.push({ src, tgt });
+    saveMyTerms();
+    document.getElementById('glSrcInput').value = '';
+    document.getElementById('glTgtInput').value = '';
+    document.getElementById('glSrcInput').focus();
+    renderGlossaryList();
+    toast(uiLang==='ko'?'✓ 용어 추가됨':'✓ Term added');
+  }
+
+  function deleteGlossaryTerm(idx) {
+    myTerms.splice(idx, 1);
+    saveMyTerms();
+    renderGlossaryList();
+  }
+
+  function startEditTerm(idx) {
+    renderGlossaryList(idx);
+  }
+
+  function saveEditTerm(idx) {
+    const newTgt = document.getElementById('glEditInput-'+idx).value.trim();
+    if (!newTgt) return;
+    myTerms[idx].tgt = newTgt;
+    saveMyTerms();
+    renderGlossaryList();
+    toast(uiLang==='ko'?'✓ 수정됨':'✓ Updated');
+  }
+
+  function renderGlossaryList(editIdx=-1) {
+    const list = document.getElementById('glList');
+    const q    = document.getElementById('glSearch').value.toLowerCase();
+    const terms = currentGlTab === 'mine' ? myTerms : BUILTIN_TERMS;
+    const filtered = terms.filter(t =>
+      t.src.toLowerCase().includes(q) || t.tgt.toLowerCase().includes(q)
+    );
+
+    document.getElementById('glInfo').textContent =
+      currentGlTab==='mine'
+        ? (uiLang==='ko' ? myTerms.length+'개 용어 저장됨' : myTerms.length+' terms saved')
+        : (uiLang==='ko' ? BUILTIN_TERMS.length+'개 내장 용어' : BUILTIN_TERMS.length+' built-in terms');
+
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="gl-empty">'+(q ? '검색 결과 없음' : '등록된 용어가 없습니다<br><small>위에서 추가해주세요</small>')+'</div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map((t, i) => {
+      const realIdx = currentGlTab==='mine' ? myTerms.indexOf(t) : i;
+      if (currentGlTab==='mine' && realIdx === editIdx) {
+        return '<div class="gl-item">'
+          + '<span class="gl-src">'+escHtml(t.src)+'</span>'
+          + '<span class="gl-arr">→</span>'
+          + '<input class="gl-edit-input" id="glEditInput-'+realIdx+'" value="'+escHtml(t.tgt)+'" data-idx="'+realIdx+'" onkeydown="if(event.key===\'Enter\')saveEditTerm(this.dataset.idx)" autofocus/>'
+          + '<div class="gl-actions">'
+          + '<button class="gl-btn" onclick="saveEditTerm('+realIdx+')">저장</button>'
+          + '<button class="gl-btn" onclick="renderGlossaryList()">취소</button>'
+          + '</div></div>';
+      }
+      return '<div class="gl-item">'
+        + '<span class="gl-src">'+escHtml(t.src)+'</span>'
+        + '<span class="gl-arr">→</span>'
+        + '<span class="gl-tgt">'+escHtml(t.tgt)+'</span>'
+        + (currentGlTab==='mine'
+          ? '<div class="gl-actions">'
+            + '<button class="gl-btn" onclick="startEditTerm('+realIdx+')" title="수정">✎</button>'
+            + '<button class="gl-btn del" onclick="deleteGlossaryTerm('+realIdx+')" title="삭제">✕</button>'
+            + '</div>'
+          : '')
+        + '</div>';
+    }).join('');
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function exportGlossary() {
+    if (myTerms.length === 0) { toast(uiLang==='ko'?'내보낼 용어가 없습니다':'No terms to export'); return; }
+    const text = myTerms.map(t => t.src + ' = ' + t.tgt).join('\n');
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'woa-glossary.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(uiLang==='ko'?'✓ 파일 저장됨':'✓ Exported');
+  }
+
+  // 앱 시작 시 저장된 용어집 refText에 반영
+  updateRefTextFromGlossary();
   let uiLang = localStorage.getItem('ui-lang') || 'ko';
 
   // 음성인식 변수 — setUILang이 isListening을 참조하므로 먼저 선언
