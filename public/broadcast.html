@@ -661,11 +661,15 @@
 
   function renderGlossaryList(editIdx=-1) {
     const list = document.getElementById('glList');
-    const q    = document.getElementById('glSearch').value.toLowerCase();
+    const q    = (document.getElementById('glSearch').value || '').toLowerCase();
     const terms = currentGlTab === 'mine' ? myTerms : BUILTIN_TERMS;
-    const filtered = terms.filter(t =>
-      t.src.toLowerCase().includes(q) || t.tgt.toLowerCase().includes(q)
-    );
+
+    // tgt가 null일 수 있으므로 안전하게 처리
+    const filtered = terms.filter(t => {
+      const src = (t.src || '').toLowerCase();
+      const tgt = (t.tgt || '').toLowerCase();
+      return !q || src.includes(q) || tgt.includes(q);
+    });
 
     document.getElementById('glInfo').textContent =
       currentGlTab==='mine'
@@ -675,9 +679,9 @@
     if (filtered.length === 0) {
       list.innerHTML = '<div class="gl-empty">'
         + (q ? '검색 결과 없음'
-             : currentGlTab === 'builtin'
-               ? '내장 용어를 불러오는 중...'
-               : '등록된 용어가 없습니다<br><small>위에서 추가해주세요</small>')
+             : currentGlTab === 'mine'
+               ? '등록된 용어가 없습니다<br><small>위에서 추가해주세요</small>'
+               : '용어 없음')
         + '</div>';
       return;
     }
@@ -688,7 +692,7 @@
         return '<div class="gl-item">'
           + '<span class="gl-src">'+escHtml(t.src)+'</span>'
           + '<span class="gl-arr">→</span>'
-          + '<input class="gl-edit-input" id="glEditInput-'+realIdx+'" value="'+escHtml(t.tgt)+'" data-idx="'+realIdx+'" onkeydown="if(event.key===\'Enter\')saveEditTerm(this.dataset.idx)" autofocus/>'
+          + '<input class="gl-edit-input" id="glEditInput-'+realIdx+'" value="'+escHtml(t.tgt||'')+'" data-idx="'+realIdx+'" onkeydown="if(event.key===\'Enter\')saveEditTerm(this.dataset.idx)" autofocus/>'
           + '<div class="gl-actions">'
           + '<button class="gl-btn" onclick="saveEditTerm('+realIdx+')">저장</button>'
           + '<button class="gl-btn" onclick="renderGlossaryList()">취소</button>'
@@ -697,7 +701,7 @@
       return '<div class="gl-item">'
         + '<span class="gl-src">'+escHtml(t.src)+'</span>'
         + '<span class="gl-arr">→</span>'
-        + '<span class="gl-tgt">'+escHtml(t.tgt)+'</span>'
+        + '<span class="gl-tgt">'+escHtml(t.tgt||'')+'</span>'
         + (currentGlTab==='mine'
           ? '<div class="gl-actions">'
             + '<button class="gl-btn" onclick="startEditTerm('+realIdx+')" title="수정">✎</button>'
