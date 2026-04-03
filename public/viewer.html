@@ -462,63 +462,37 @@
 
     ::-webkit-scrollbar { width: 0; height: 0; }
 
-    /* ── TTS 속도 패널 ── */
+    /* ── TTS 패널 ── */
     .tts-panel {
       position: fixed;
-      bottom: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px) + 8px);
-      left: 50%;
-      transform: translateX(-50%) translateY(10px);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px 18px;
-      display: flex; flex-direction: column; gap: 10px;
-      z-index: 102;
+      bottom: calc(var(--bottombar) + env(safe-area-inset-bottom,0px) + 10px);
+      left: 50%; transform: translateX(-50%) translateY(8px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 18px;
+      display: flex; flex-direction: column; gap: 12px;
+      z-index: 102; min-width: 230px;
       box-shadow: 0 8px 24px rgba(0,0,0,.3);
       opacity: 0; pointer-events: none;
       transition: opacity .2s, transform .2s;
-      min-width: 220px;
     }
-    .tts-panel.show {
-      opacity: 1; pointer-events: auto;
-      transform: translateX(-50%) translateY(0);
-    }
-    .tts-panel-title {
-      font-size: 11px; font-weight: 600;
-      color: var(--text3); letter-spacing: .08em;
-      text-transform: uppercase;
-      font-family: 'Noto Sans KR', sans-serif;
-    }
-    .tts-row { display: flex; align-items: center; gap: 10px; }
-    .tts-label { font-size: 13px; color: var(--text2); font-family: 'Noto Sans KR', sans-serif; min-width: 40px; }
-    .tts-slider {
-      flex: 1; -webkit-appearance: none; appearance: none;
-      height: 4px; border-radius: 2px;
-      background: var(--border); outline: none; cursor: pointer;
-    }
-    .tts-slider::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 18px; height: 18px;
-      border-radius: 50%; background: var(--accent);
-      cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2);
-    }
-    .tts-val {
-      font-size: 12px; color: var(--accent); font-weight: 600;
-      min-width: 32px; text-align: right;
-      font-family: 'Noto Sans KR', sans-serif;
-    }
-    .tts-reading-indicator {
+    .tts-panel.show { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+    .tts-panel-title { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing:.08em; text-transform:uppercase; font-family:'Noto Sans KR',sans-serif; }
+    .tts-row { display:flex; align-items:center; gap:10px; }
+    .tts-lbl { font-size:13px; color:var(--text2); font-family:'Noto Sans KR',sans-serif; min-width:44px; }
+    .tts-slider { flex:1; -webkit-appearance:none; appearance:none; height:4px; border-radius:2px; background:var(--border); outline:none; cursor:pointer; }
+    .tts-slider::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.25); }
+    .tts-val { font-size:12px; color:var(--accent); font-weight:600; min-width:34px; text-align:right; font-family:'Noto Sans KR',sans-serif; }
+    .tts-bar {
       position: fixed;
-      top: calc(var(--topbar) + env(safe-area-inset-top, 0px) + 4px);
-      left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
-      opacity: 0; z-index: 98;
-      transition: opacity .3s;
-      animation: tts-sweep 2s linear infinite;
+      top: calc(var(--topbar) + env(safe-area-inset-top,0px));
+      left: 0; right: 0; height: 3px; z-index: 98;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      opacity: 0; transition: opacity .3s;
+      animation: tts-sweep 1.8s linear infinite;
     }
-    .tts-reading-indicator.show { opacity: 1; }
-    @keyframes tts-sweep {
-      0%   { background-position: -100% 0; }
+    .tts-bar.show { opacity: 1; }
+    @keyframes tts-sweep { 0%{opacity:.4} 50%{opacity:1} 100%{opacity:.4} }
+
       100% { background-position: 200% 0; }
     }
   </style>
@@ -587,30 +561,30 @@
   <!-- 우측 버튼 -->
   <div class="bb-actions">
     <button class="bb-btn bb-scroll-toggle" id="scrollToggleBtn" onclick="toggleAutoScroll()" title="자동 스크롤">↕</button>
-    <button class="bb-btn" id="ttsBtn" onclick="toggleTTS()" title="TTS 음성 읽기">🔇</button>
+    <button class="bb-btn" id="ttsBtn" onclick="toggleTTS()" title="음성 읽기">🔇</button>
     <button class="bb-btn" onclick="showClearModal()">🗑️</button>
   </div>
 </div>
 
-<!-- TTS 속도 패널 -->
+<!-- TTS 설정 패널 -->
 <div class="tts-panel" id="ttsPanel">
-  <div class="tts-panel-title" id="ttsPanelTitle">🔊 음성 읽기</div>
+  <div class="tts-panel-title">🔊 음성 읽기 설정</div>
   <div class="tts-row">
-    <span class="tts-label" id="ttsSpeedLabel">속도</span>
-    <input type="range" class="tts-slider" id="ttsSpeed" min="0.5" max="2" step="0.1" value="1"
-      oninput="onTTSSpeedChange(this.value)"/>
+    <span class="tts-lbl" id="ttsSpeedLbl">속도</span>
+    <input type="range" class="tts-slider" id="ttsSpeed" min="0.5" max="2" step="0.1" value="1" oninput="onTTSSpeed(this.value)"/>
     <span class="tts-val" id="ttsSpeedVal">1.0×</span>
   </div>
   <div class="tts-row">
-    <span class="tts-label" id="ttsPitchLabel">음높이</span>
-    <input type="range" class="tts-slider" id="ttsPitch" min="0.5" max="2" step="0.1" value="1"
-      oninput="onTTSPitchChange(this.value)"/>
+    <span class="tts-lbl" id="ttsPitchLbl">음높이</span>
+    <input type="range" class="tts-slider" id="ttsPitch" min="0.5" max="2" step="0.1" value="1" oninput="onTTSPitch(this.value)"/>
     <span class="tts-val" id="ttsPitchVal">1.0</span>
   </div>
 </div>
 
-<!-- TTS 읽는 중 표시 바 -->
-<div class="tts-reading-indicator" id="ttsBar"></div>
+<!-- TTS 재생 중 표시 바 -->
+<div class="tts-bar" id="ttsBar"></div>
+
+
 
 <!-- 새 번역 토스트 -->
 
@@ -870,7 +844,7 @@
     if (allItems.length > 50) allItems.shift();
     localStorage.setItem('sermon-transcript', JSON.stringify(allItems));
 
-    // TTS 읽기
+    // TTS
     if (ttsEnabled) ttsSpeak(text);
   }
 
@@ -912,24 +886,25 @@
     document.getElementById('modalBg').classList.remove('show');
   }
 
-  /* ── TTS (Text-to-Speech) ── */
-  let ttsEnabled   = false;
-  let ttsSpeaking  = false;
-  let ttsQueue     = [];       // 읽기 대기열
-  let ttsSpeed     = parseFloat(localStorage.getItem('tts-speed') || '1.0');
-  let ttsPitch     = parseFloat(localStorage.getItem('tts-pitch') || '1.0');
-  let ttsPanelOpen = false;
+  /* ══════════════════════════════
+     TTS (Text-to-Speech)
+     우선순위: Google Cloud TTS → 브라우저 내장 TTS (폴백)
+  ══════════════════════════════ */
 
-  // 언어별 TTS lang 코드
+  // 언어 → Google TTS 언어코드
   const TTS_LANG = {
-    ko:      'ko-KR',
-    en:      'en-US',
-    es:      'es-ES',
-    'zh-cn': 'zh-CN',
-    'zh-hk': 'zh-HK',
-    fa:      'fa-IR',
-    pa:      'pa-IN',
+    ko:'ko-KR', en:'en-US', es:'es-ES',
+    'zh-cn':'zh-CN', 'zh-hk':'zh-HK',
+    fa:'fa-IR', pa:'pa-IN',
   };
+
+  let ttsEnabled   = localStorage.getItem('tts-enabled') === '1';
+  let ttsSpeed     = parseFloat(localStorage.getItem('tts-speed')  || '1.0');
+  let ttsPitch     = parseFloat(localStorage.getItem('tts-pitch')  || '1.0');
+  let ttsSpeaking  = false;
+  let ttsQueue     = [];
+  let ttsPanelOpen = false;
+  let ttsUseGoogle = false; // Google TTS 사용 가능 여부 (첫 요청 후 확인)
 
   function toggleTTS() {
     ttsEnabled = !ttsEnabled;
@@ -948,50 +923,76 @@
     btn.textContent = ttsEnabled ? '🔊' : '🔇';
     btn.classList.toggle('active', ttsEnabled);
     btn.title = ttsEnabled
-      ? (uiLang==='ko' ? '음성 켜짐 — 탭하여 끄기' : 'TTS ON — tap to off')
-      : (uiLang==='ko' ? '음성 끄기 — 탭하여 켜기' : 'TTS OFF — tap to on');
-    // 패널 토글 (길게 누르면 패널, 짧게 누르면 on/off)
+      ? (uiLang==='ko' ? '음성 켜짐 — 탭하여 끄기 / 길게 누르면 설정' : 'TTS ON — tap off / hold for settings')
+      : (uiLang==='ko' ? '음성 끄기 — 탭하여 켜기 / 길게 누르면 설정' : 'TTS OFF — tap on / hold for settings');
   }
 
-  // 길게 누르면 속도 패널 표시
-  let ttsLongPressTimer = null;
+  // 길게 누르면 설정 패널
+  let _longPressT = null;
   document.getElementById('ttsBtn').addEventListener('pointerdown', () => {
-    ttsLongPressTimer = setTimeout(() => {
+    _longPressT = setTimeout(() => {
       ttsPanelOpen = !ttsPanelOpen;
       document.getElementById('ttsPanel').classList.toggle('show', ttsPanelOpen);
     }, 500);
   });
-  document.getElementById('ttsBtn').addEventListener('pointerup',   () => clearTimeout(ttsLongPressTimer));
-  document.getElementById('ttsBtn').addEventListener('pointerleave',() => clearTimeout(ttsLongPressTimer));
+  ['pointerup','pointerleave','pointercancel'].forEach(ev =>
+    document.getElementById('ttsBtn').addEventListener(ev, () => clearTimeout(_longPressT))
+  );
 
-  // 패널 외부 클릭 시 닫기
+  // 패널 외부 탭 → 닫기
   document.addEventListener('pointerdown', e => {
-    if (ttsPanelOpen &&
-        !document.getElementById('ttsPanel').contains(e.target) &&
-        !document.getElementById('ttsBtn').contains(e.target)) {
+    if (ttsPanelOpen
+        && !document.getElementById('ttsPanel').contains(e.target)
+        && e.target.id !== 'ttsBtn') {
       ttsPanelOpen = false;
       document.getElementById('ttsPanel').classList.remove('show');
     }
   });
 
-  function onTTSSpeedChange(val) {
-    ttsSpeed = parseFloat(val);
+  function onTTSSpeed(v) {
+    ttsSpeed = parseFloat(v);
     document.getElementById('ttsSpeedVal').textContent = ttsSpeed.toFixed(1) + '×';
     localStorage.setItem('tts-speed', ttsSpeed);
   }
-  function onTTSPitchChange(val) {
-    ttsPitch = parseFloat(val);
+  function onTTSPitch(v) {
+    ttsPitch = parseFloat(v);
     document.getElementById('ttsPitchVal').textContent = ttsPitch.toFixed(1);
     localStorage.setItem('tts-pitch', ttsPitch);
   }
 
+  // ── Google Cloud TTS 호출 ──
+  async function ttsGoogle(text) {
+    const url = '/api/tts?lang=' + encodeURIComponent(currentLang)
+              + '&text=' + encodeURIComponent(text);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Google TTS ' + res.status);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  // ── 브라우저 내장 TTS (폴백) ──
+  function ttsBrowser(text) {
+    return new Promise((resolve, reject) => {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang  = TTS_LANG[currentLang] || 'ko-KR';
+      utter.rate  = ttsSpeed;
+      utter.pitch = ttsPitch;
+      // Chrome 15초 멈춤 버그 대응
+      const timer = setInterval(() => { if (speechSynthesis.speaking) speechSynthesis.resume(); }, 10000);
+      utter.onend   = () => { clearInterval(timer); resolve(); };
+      utter.onerror = () => { clearInterval(timer); reject(); };
+      speechSynthesis.speak(utter);
+    });
+  }
+
+  // ── TTS 실행 (큐 방식) ──
   function ttsSpeak(text) {
     if (!ttsEnabled || !text.trim()) return;
     ttsQueue.push(text);
     if (!ttsSpeaking) ttsNext();
   }
 
-  function ttsNext() {
+  async function ttsNext() {
     if (!ttsQueue.length || !ttsEnabled) {
       ttsSpeaking = false;
       document.getElementById('ttsBar').classList.remove('show');
@@ -1000,40 +1001,36 @@
     ttsSpeaking = true;
     document.getElementById('ttsBar').classList.add('show');
     const text = ttsQueue.shift();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang  = TTS_LANG[currentLang] || 'ko-KR';
-    utter.rate  = ttsSpeed;
-    utter.pitch = ttsPitch;
 
-    // Chrome 버그: 15초 이상 텍스트는 멈춤 → 주기적으로 resume()
-    const resumeTimer = setInterval(() => {
-      if (speechSynthesis.speaking) speechSynthesis.resume();
-    }, 10000);
-
-    utter.onend = () => {
-      clearInterval(resumeTimer);
-      ttsNext(); // 대기열 다음 항목
-    };
-    utter.onerror = e => {
-      clearInterval(resumeTimer);
-      console.warn('[TTS] error:', e.error);
-      ttsNext();
-    };
-
-    speechSynthesis.speak(utter);
+    try {
+      // Google Cloud TTS 시도
+      const audioUrl = await ttsGoogle(text);
+      ttsUseGoogle = true;
+      const audio = new Audio(audioUrl);
+      audio.playbackRate = ttsSpeed;
+      await new Promise((res, rej) => {
+        audio.onended = res;
+        audio.onerror = rej;
+        audio.play().catch(rej);
+      });
+      URL.revokeObjectURL(audioUrl);
+    } catch(e) {
+      // 실패 시 브라우저 내장 TTS로 폴백
+      console.warn('[TTS] Google failed, using browser TTS:', e.message);
+      ttsUseGoogle = false;
+      try { await ttsBrowser(text); } catch(e2) { /* 무시 */ }
+    }
+    ttsNext();
   }
 
-  // 탭 복귀 시 Chrome TTS가 멈추는 버그 대응
+  // 탭 복귀 시 브라우저 TTS 재개
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && ttsSpeaking) {
+    if (document.visibilityState === 'visible' && ttsSpeaking && !ttsUseGoogle) {
       speechSynthesis.resume();
     }
   });
 
-  // 초기값 복원
-  ttsEnabled = localStorage.getItem('tts-enabled') === '1';
-  ttsSpeed   = parseFloat(localStorage.getItem('tts-speed') || '1.0');
-  ttsPitch   = parseFloat(localStorage.getItem('tts-pitch') || '1.0');
+  // 초기값 적용
   document.getElementById('ttsSpeed').value = ttsSpeed;
   document.getElementById('ttsPitch').value = ttsPitch;
   document.getElementById('ttsSpeedVal').textContent = ttsSpeed.toFixed(1) + '×';
@@ -1043,7 +1040,7 @@
   /* ── 초기화 ── */
   setUILang(uiLang);
   document.getElementById('scrollToggleBtn').classList.add('active');
-  requestWakeLock(); // 화면 꺼짐 방지 시작
+  requestWakeLock();
   connect();
 </script>
 </body>
