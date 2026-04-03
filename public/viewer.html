@@ -844,6 +844,13 @@
     if (allItems.length > 50) allItems.shift();
     localStorage.setItem('sermon-transcript', JSON.stringify(allItems));
 
+    // 자동 스크롤 켜짐 → 최신 항목으로 이동
+    if (autoScroll) {
+      setTimeout(() => {
+        item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+
     // TTS
     if (ttsEnabled) ttsSpeak(text);
   }
@@ -855,12 +862,40 @@
     autoScroll = !autoScroll;
     const btn = document.getElementById('scrollToggleBtn');
     btn.classList.toggle('active', autoScroll);
-    btn.title = autoScroll ? (uiLang==='ko'?'자동 스크롤 켜짐 (탭하여 끄기)':'Auto scroll ON') : (uiLang==='ko'?'수동 스크롤 (탭하여 켜기)':'Manual scroll');
     btn.textContent = autoScroll ? '↕' : '⤓';
-    if (autoScroll) scrollToLatest();
+    btn.title = autoScroll
+      ? (uiLang==='ko' ? '자동 스크롤 켜짐 — 탭하여 끄기' : 'Auto scroll ON — tap to disable')
+      : (uiLang==='ko' ? '수동 스크롤 — 탭하여 켜기'       : 'Manual scroll — tap to enable');
+    // 켤 때 즉시 최신으로 이동
+    if (autoScroll) {
+      setTimeout(() => {
+        const latest = document.querySelector('.t-item.latest');
+        if (latest) latest.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+    // 토스트 안내
+    const msg = autoScroll
+      ? (uiLang==='ko' ? '↕ 자동 스크롤 켜짐' : '↕ Auto scroll ON')
+      : (uiLang==='ko' ? '⤓ 수동 스크롤 모드' : '⤓ Manual scroll');
+    showToast(msg);
   }
 
-  // 스크롤 감지 — 위로 올리면 자동 스크롤 일시 해제
+  // 간단한 토스트
+  function showToast(msg) {
+    let t = document.getElementById('scrollToast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'scrollToast';
+      t.style.cssText = 'position:fixed;bottom:calc(var(--bottombar) + env(safe-area-inset-bottom,0px) + 10px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:7px 16px;border-radius:20px;font-size:12px;font-family:"Noto Sans KR",sans-serif;white-space:nowrap;z-index:103;pointer-events:none;opacity:0;transition:opacity .2s;';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._t);
+    t._t = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+  }
+
+  // 스크롤 감지 — 사용자가 위로 올리면 자동 스크롤 일시 해제
   let userScrolling = false, scrollPauseTimer = null;
   window.addEventListener('scroll', () => {
     // scroll tracking only
@@ -1045,6 +1080,10 @@
 </script>
 </body>
 </html>
+
+
+ 
+
 
 
 
