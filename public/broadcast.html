@@ -346,6 +346,7 @@
 
   let srcLang='en', activeLangs=new Set(['ko']);
   let isTranslating=false, refText='', histArr=[], glossaryTerms=[];
+  let translationContext = []; // 최근 번역 문장 (컨텍스트 연속성용)
   let uiLang = localStorage.getItem('ui-lang') || 'ko';
 
   // 음성인식 변수 — setUILang이 isListening을 참조하므로 먼저 선언
@@ -788,10 +789,17 @@
     });
 
     try{
-      const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:tt,refText:refText||null,langs:[...activeLangs],srcLang})});
+      // 컨텍스트: 최근 번역된 영어 문장 2개 (한국어 번역 품질 향상)
+      const contextStr = translationContext.slice(-2).join(' ');
+      const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:tt,refText:refText||null,langs:[...activeLangs],srcLang,context:contextStr||null})});
       const d=await res.json();
       if(!res.ok)throw new Error(d.error||'Server error');
 
+      // 컨텍스트 버퍼 업데이트 (원문 저장, 최대 3개 유지)
+      if (tt.length > 10) {
+        translationContext.push(tt);
+        if (translationContext.length > 3) translationContext.shift();
+      }
       const ls=Object.keys(d.results);
 
       // 각 언어 로그에 누적 추가
