@@ -529,7 +529,8 @@
   function openGlossary() {
     updateRefTextFromGlossary();
     document.getElementById('glossaryBg').classList.add('on');
-    switchTab('mine');
+    // 모달이 열린 후 탭 전환 (display:none 상태에서 렌더 방지)
+    setTimeout(() => switchTab(currentGlTab), 10);
   }
   function closeGlossary() {
     document.getElementById('glossaryBg').classList.remove('on');
@@ -540,11 +541,17 @@
 
   function switchTab(tab) {
     currentGlTab = tab;
-    document.getElementById('tabMine').classList.toggle('on',    tab==='mine');
-    document.getElementById('tabBuiltin').classList.toggle('on', tab==='builtin');
-    document.getElementById('glAddRow').style.display    = tab==='mine' ? '' : 'none';
-    document.getElementById('glExportBtn').style.display = tab==='mine' ? '' : 'none';
-    document.getElementById('glSearch').value = '';
+    const tabMine    = document.getElementById('tabMine');
+    const tabBuiltin = document.getElementById('tabBuiltin');
+    const glAddRow   = document.getElementById('glAddRow');
+    const glExport   = document.getElementById('glExportBtn');
+    const glSearch   = document.getElementById('glSearch');
+    if (!tabMine) return; // 모달 아직 안 열림
+    tabMine.classList.toggle('on',    tab==='mine');
+    tabBuiltin.classList.toggle('on', tab==='builtin');
+    if (glAddRow) glAddRow.style.display    = tab==='mine' ? '' : 'none';
+    if (glExport) glExport.style.display    = tab==='mine' ? '' : 'none';
+    if (glSearch) glSearch.value = '';
     renderGlossaryList();
   }
 
@@ -576,7 +583,10 @@
   }
 
   function saveEditTerm(idx) {
-    const newTgt = document.getElementById('glEditInput-'+idx).value.trim();
+    idx = parseInt(idx);
+    var inp = document.getElementById('glEI' + idx);
+    if (!inp) return;
+    var newTgt = inp.value.trim();
     if (!newTgt) return;
     myTerms[idx].tgt = newTgt;
     saveMyTerms();
@@ -598,7 +608,12 @@
         : (uiLang==='ko' ? BUILTIN_TERMS.length+'개 내장 용어' : BUILTIN_TERMS.length+' built-in terms');
 
     if (filtered.length === 0) {
-      list.innerHTML = '<div class="gl-empty">'+(q ? '검색 결과 없음' : '등록된 용어가 없습니다<br><small>위에서 추가해주세요</small>')+'</div>';
+      list.innerHTML = '<div class="gl-empty">'
+        + (q ? '검색 결과 없음'
+             : currentGlTab === 'builtin'
+               ? '내장 용어를 불러오는 중...'
+               : '등록된 용어가 없습니다<br><small>위에서 추가해주세요</small>')
+        + '</div>';
       return;
     }
 
