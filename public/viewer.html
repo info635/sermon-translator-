@@ -533,11 +533,11 @@
 <body>
 
 <!-- 오디오 잠금 해제 오버레이 (모바일 자동재생 차단 해결) -->
-<div class="audio-unlock" id="audioUnlock" style="display:none;" onclick="unlockAudio()">
+<div class="audio-unlock" id="audioUnlock" style="display:none;">
   <div class="audio-unlock-icon">🔊</div>
   <div class="audio-unlock-title" id="unlockTitle">음성 서비스 활성화</div>
   <div class="audio-unlock-sub" id="unlockSub">탭하면 번역된 내용을<br>음성으로 읽어드립니다</div>
-  <button class="audio-unlock-btn" id="unlockBtn">탭하여 시작</button>
+  <button class="audio-unlock-btn" id="unlockBtn" onclick="unlockAudio()">탭하여 시작</button>
 </div>
 
 <!-- TOP BAR -->
@@ -974,61 +974,38 @@
     fa:'fa-IR', pa:'pa-IN',
   };
 
-  let audioUnlocked = false;  // 모바일 오디오 잠금 해제 여부
+  // ══════════════════════════════════════
+  //  TTS 시스템 — iOS/Android 호환 버전
+  //
+  //  핵심: iOS는 audio.play()를 반드시
+  //  await 없이 동기적으로 호출해야 함
+  //  → 공유 Audio 엘리먼트로 해결
+  // ══════════════════════════════════════
+
+  let audioUnlocked = false;
   let ttsEnabled   = localStorage.getItem('tts-enabled') === '1';
   let ttsSpeed     = parseFloat(localStorage.getItem('tts-speed')  || '1.0');
   let ttsPitch     = parseFloat(localStorage.getItem('tts-pitch')  || '1.0');
   let ttsSpeaking  = false;
   let ttsQueue     = [];
   let ttsPanelOpen = false;
-  let ttsUseGoogle = false; // Google TTS 사용 가능 여부 (첫 요청 후 확인)
 
+  // 공유 Audio 엘리먼트 — 미리 생성해서 재사용
+  // iOS는 동일 엘리먼트를 gesture로 play()한 후에만 자동재생 허용
+  const sharedAudio = new Audio();
+  sharedAudio.preload = 'auto';
+
+  // ── TTS 버튼 토글 ──
   function toggleTTS() {
     ttsEnabled = !ttsEnabled;
     localStorage.setItem('tts-enabled', ttsEnabled ? '1' : '0');
     updateTTSBtn();
-    if (ttsEnabled && !audioUnlocked) {
-      // 모바일에서 오디오 잠금 해제 오버레이 표시
-      showAudioUnlock();
-    }
     if (!ttsEnabled) {
-      speechSynthesis.cancel();
+      sharedAudio.pause();
+      sharedAudio.src = '';
       ttsQueue = [];
       ttsSpeaking = false;
       document.getElementById('ttsBar').classList.remove('show');
-    }
-  }
-
-  function showAudioUnlock() {
-    const el = document.getElementById('audioUnlock');
-    const isKo = uiLang === 'ko';
-    document.getElementById('unlockTitle').textContent = isKo ? '음성 서비스 활성화' : 'Enable Audio';
-    document.getElementById('unlockSub').innerHTML = isKo
-      ? '탭하면 번역된 내용을<br>음성으로 읽어드립니다'
-      : 'Tap to enable audio<br>for translated content';
-    document.getElementById('unlockBtn').textContent = isKo ? '탭하여 시작' : 'Tap to Start';
-    el.style.display = 'flex';
-  }
-
-  async function unlockAudio() {
-    // 사용자 탭으로 오디오 잠금 해제
-    try {
-      // 짧은 무음 오디오로 unlock
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-      await ctx.resume();
-    } catch(e) { /* 무시 */ }
-
-    audioUnlocked = true;
-    document.getElementById('audioUnlock').style.display = 'none';
-
-    // 대기 중인 큐 즉시 재생
-    if (ttsEnabled && ttsQueue.length > 0 && !ttsSpeaking) {
-      ttsNext();
     }
   }
 
@@ -1037,23 +1014,56 @@
     btn.textContent = ttsEnabled ? '🔊' : '🔇';
     btn.classList.toggle('active', ttsEnabled);
     btn.title = ttsEnabled
-      ? (uiLang==='ko' ? '음성 켜짐 — 탭하여 끄기 / 길게 누르면 설정' : 'TTS ON — tap off / hold for settings')
-      : (uiLang==='ko' ? '음성 끄기 — 탭하여 켜기 / 길게 누르면 설정' : 'TTS OFF — tap on / hold for settings');
+      ? (uiLang==='ko' ? '음성 켜짐 — 탭하여 끄기' : 'TTS ON — tap to off')
+      : (uiLang==='ko' ? '음성 꺼짐 — 탭하여 켜기' : 'TTS OFF — tap to on');
   }
 
-  // 길게 누르면 설정 패널
+  // ── 오디오 잠금 해제 오버레이 ──
+  function showAudioUnlock() {
+    const el = document.getElementById('audioUnlock');
+    const ko = uiLang === 'ko';
+    document.getElementById('unlockTitle').textContent = ko ? '음성 서비스 활성화' : 'Enable Audio';
+    document.getElementById('unlockSub').innerHTML    = ko
+      ? '아래 버튼을 탭하면<br>번역 내용을 음성으로 읽어드립니다'
+      : 'Tap the button below<br>to hear translations aloud';
+    document.getElementById('unlockBtn').textContent  = ko ? '▶ 탭하여 시작' : '▶ Tap to Start';
+    el.style.display = 'flex';
+  }
+
+  // ── 핵심: 동기적 잠금 해제 ──
+  // async/await 없이 sharedAudio.play()를 즉시 호출
+  // → iOS gesture context 유지됨
+  function unlockAudio() {
+    // 1. 무음 WAV로 즉시(동기) 재생 — iOS autoplay 잠금 해제
+    sharedAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+    const playPromise = sharedAudio.play();
+
+    document.getElementById('audioUnlock').style.display = 'none';
+    audioUnlocked = true;
+
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        // 잠금 해제 성공 → 큐에 있는 텍스트 재생 시작
+        if (ttsEnabled && ttsQueue.length > 0 && !ttsSpeaking) {
+          ttsNext();
+        }
+      }).catch(e => {
+        console.warn('[TTS] unlock failed:', e.message);
+      });
+    }
+  }
+
+  // 길게 누르면 속도/음높이 설정 패널
   let _longPressT = null;
   document.getElementById('ttsBtn').addEventListener('pointerdown', () => {
     _longPressT = setTimeout(() => {
       ttsPanelOpen = !ttsPanelOpen;
       document.getElementById('ttsPanel').classList.toggle('show', ttsPanelOpen);
-    }, 500);
+    }, 600);
   });
   ['pointerup','pointerleave','pointercancel'].forEach(ev =>
     document.getElementById('ttsBtn').addEventListener(ev, () => clearTimeout(_longPressT))
   );
-
-  // 패널 외부 탭 → 닫기
   document.addEventListener('pointerdown', e => {
     if (ttsPanelOpen
         && !document.getElementById('ttsPanel').contains(e.target)
@@ -1074,38 +1084,32 @@
     localStorage.setItem('tts-pitch', ttsPitch);
   }
 
-  // ── Google Cloud TTS 호출 ──
-  async function ttsGoogle(text) {
-    const url = '/api/tts?lang=' + encodeURIComponent(currentLang)
-              + '&text=' + encodeURIComponent(text);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Google TTS ' + res.status);
-    const blob = await res.blob();
-    return URL.createObjectURL(blob);
-  }
-
-  // ── 브라우저 내장 TTS (폴백) ──
-  function ttsBrowser(text) {
-    return new Promise((resolve, reject) => {
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang  = TTS_LANG[currentLang] || 'ko-KR';
-      utter.rate  = ttsSpeed;
-      utter.pitch = ttsPitch;
-      // Chrome 15초 멈춤 버그 대응
-      const timer = setInterval(() => { if (speechSynthesis.speaking) speechSynthesis.resume(); }, 10000);
-      utter.onend   = () => { clearInterval(timer); resolve(); };
-      utter.onerror = () => { clearInterval(timer); reject(); };
-      speechSynthesis.speak(utter);
-    });
-  }
-
-  // ── TTS 실행 (큐 방식) ──
+  // ── TTS 진입점 ──
   function ttsSpeak(text) {
     if (!ttsEnabled || !text.trim()) return;
+
+    // 잠금 해제 안 됐으면 오버레이 표시 + 큐에 저장
+    if (!audioUnlocked) {
+      ttsQueue.push(text);
+      showAudioUnlock();
+      return;
+    }
+
     ttsQueue.push(text);
     if (!ttsSpeaking) ttsNext();
   }
 
+  // ── Google TTS 오디오 fetch ──
+  async function fetchTTSAudio(text) {
+    const url = '/api/tts?lang=' + encodeURIComponent(currentLang)
+              + '&text=' + encodeURIComponent(text);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  // ── 큐 재생 ──
   async function ttsNext() {
     if (!ttsQueue.length || !ttsEnabled) {
       ttsSpeaking = false;
@@ -1117,38 +1121,46 @@
     const text = ttsQueue.shift();
 
     try {
-      // Google Cloud TTS 시도
-      const audioUrl = await ttsGoogle(text);
-      ttsUseGoogle = true;
-      const audio = new Audio(audioUrl);
-      audio.playbackRate = ttsSpeed;
-      await new Promise((res, rej) => {
-        audio.onended = res;
-        audio.onerror = rej;
-        audio.play().then(() => {
-          audioUnlocked = true; // 재생 성공 → 잠금 해제 확인
-        }).catch(err => {
-          // 모바일 자동재생 차단 → 잠금 해제 오버레이 표시
-          if (err.name === 'NotAllowedError') {
-            ttsQueue.unshift(audio._text || ''); // 텍스트 다시 큐에 넣기
-            showAudioUnlock();
-            rej(err);
-          } else {
-            rej(err);
-          }
-        });
+      // Google Cloud TTS fetch (await OK — 이미 unlocked)
+      const audioUrl = await fetchTTSAudio(text);
+
+      // 공유 Audio 엘리먼트에 src 설정 후 재생
+      sharedAudio.src = audioUrl;
+      sharedAudio.playbackRate = ttsSpeed;
+
+      await new Promise((resolve, reject) => {
+        sharedAudio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
+        sharedAudio.onerror = () => { URL.revokeObjectURL(audioUrl); reject(new Error('audio error')); };
+        sharedAudio.play().catch(reject);
       });
-      URL.revokeObjectURL(audioUrl);
+
     } catch(e) {
-      // 실패 시 브라우저 내장 TTS로 폴백
-      console.warn('[TTS] Google failed, using browser TTS:', e.message);
-      ttsUseGoogle = false;
-      try { await ttsBrowser(text); } catch(e2) { /* 무시 */ }
+      console.warn('[TTS] 실패, 브라우저 TTS로 폴백:', e.message);
+      // 브라우저 내장 TTS 폴백
+      try {
+        await new Promise((resolve, reject) => {
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.lang  = TTS_LANG[currentLang] || 'ko-KR';
+          utter.rate  = ttsSpeed;
+          utter.pitch = ttsPitch;
+          const timer = setInterval(() => { if (speechSynthesis.speaking) speechSynthesis.resume(); }, 8000);
+          utter.onend   = () => { clearInterval(timer); resolve(); };
+          utter.onerror = () => { clearInterval(timer); reject(); };
+          speechSynthesis.speak(utter);
+        });
+      } catch(e2) { /* 무시 */ }
     }
-    ttsNext();
+
+    ttsNext(); // 다음 항목
   }
 
-  // 탭 복귀 시 브라우저 TTS 재개
+  // 탭 복귀 시 재개
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ttsSpeaking) {
+      if (sharedAudio.paused) sharedAudio.play().catch(()=>{});
+      else speechSynthesis.resume();
+    }
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && ttsSpeaking && !ttsUseGoogle) {
       speechSynthesis.resume();
@@ -1171,6 +1183,9 @@
 </body>
 </html>
 
+
+
+  
 
 
 
