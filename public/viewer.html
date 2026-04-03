@@ -461,6 +461,66 @@
     .rc-sub  { font-size: 12px; color: var(--accent); font-family:'Noto Sans KR',sans-serif; }
 
     ::-webkit-scrollbar { width: 0; height: 0; }
+
+    /* ── TTS 속도 패널 ── */
+    .tts-panel {
+      position: fixed;
+      bottom: calc(var(--bottombar) + env(safe-area-inset-bottom, 0px) + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex; flex-direction: column; gap: 10px;
+      z-index: 102;
+      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      min-width: 220px;
+    }
+    .tts-panel.show {
+      opacity: 1; pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+    .tts-panel-title {
+      font-size: 11px; font-weight: 600;
+      color: var(--text3); letter-spacing: .08em;
+      text-transform: uppercase;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    .tts-row { display: flex; align-items: center; gap: 10px; }
+    .tts-label { font-size: 13px; color: var(--text2); font-family: 'Noto Sans KR', sans-serif; min-width: 40px; }
+    .tts-slider {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 2px;
+      background: var(--border); outline: none; cursor: pointer;
+    }
+    .tts-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      border-radius: 50%; background: var(--accent);
+      cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+    .tts-val {
+      font-size: 12px; color: var(--accent); font-weight: 600;
+      min-width: 32px; text-align: right;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    .tts-reading-indicator {
+      position: fixed;
+      top: calc(var(--topbar) + env(safe-area-inset-top, 0px) + 4px);
+      left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+      opacity: 0; z-index: 98;
+      transition: opacity .3s;
+      animation: tts-sweep 2s linear infinite;
+    }
+    .tts-reading-indicator.show { opacity: 1; }
+    @keyframes tts-sweep {
+      0%   { background-position: -100% 0; }
+      100% { background-position: 200% 0; }
+    }
   </style>
 </head>
 <body>
@@ -527,9 +587,30 @@
   <!-- 우측 버튼 -->
   <div class="bb-actions">
     <button class="bb-btn bb-scroll-toggle" id="scrollToggleBtn" onclick="toggleAutoScroll()" title="자동 스크롤">↕</button>
+    <button class="bb-btn" id="ttsBtn" onclick="toggleTTS()" title="TTS 음성 읽기">🔇</button>
     <button class="bb-btn" onclick="showClearModal()">🗑️</button>
   </div>
 </div>
+
+<!-- TTS 속도 패널 -->
+<div class="tts-panel" id="ttsPanel">
+  <div class="tts-panel-title" id="ttsPanelTitle">🔊 음성 읽기</div>
+  <div class="tts-row">
+    <span class="tts-label" id="ttsSpeedLabel">속도</span>
+    <input type="range" class="tts-slider" id="ttsSpeed" min="0.5" max="2" step="0.1" value="1"
+      oninput="onTTSSpeedChange(this.value)"/>
+    <span class="tts-val" id="ttsSpeedVal">1.0×</span>
+  </div>
+  <div class="tts-row">
+    <span class="tts-label" id="ttsPitchLabel">음높이</span>
+    <input type="range" class="tts-slider" id="ttsPitch" min="0.5" max="2" step="0.1" value="1"
+      oninput="onTTSPitchChange(this.value)"/>
+    <span class="tts-val" id="ttsPitchVal">1.0</span>
+  </div>
+</div>
+
+<!-- TTS 읽는 중 표시 바 -->
+<div class="tts-reading-indicator" id="ttsBar"></div>
 
 <!-- 새 번역 토스트 -->
 
@@ -789,6 +870,8 @@
     if (allItems.length > 50) allItems.shift();
     localStorage.setItem('sermon-transcript', JSON.stringify(allItems));
 
+    // TTS 읽기
+    if (ttsEnabled) ttsSpeak(text);
   }
 
   /* ── 자동/수동 스크롤 ── */
@@ -828,6 +911,134 @@
     localStorage.removeItem('sermon-transcript');
     document.getElementById('modalBg').classList.remove('show');
   }
+
+  /* ── TTS (Text-to-Speech) ── */
+  let ttsEnabled   = false;
+  let ttsSpeaking  = false;
+  let ttsQueue     = [];       // 읽기 대기열
+  let ttsSpeed     = parseFloat(localStorage.getItem('tts-speed') || '1.0');
+  let ttsPitch     = parseFloat(localStorage.getItem('tts-pitch') || '1.0');
+  let ttsPanelOpen = false;
+
+  // 언어별 TTS lang 코드
+  const TTS_LANG = {
+    ko:      'ko-KR',
+    en:      'en-US',
+    es:      'es-ES',
+    'zh-cn': 'zh-CN',
+    'zh-hk': 'zh-HK',
+    fa:      'fa-IR',
+    pa:      'pa-IN',
+  };
+
+  function toggleTTS() {
+    ttsEnabled = !ttsEnabled;
+    localStorage.setItem('tts-enabled', ttsEnabled ? '1' : '0');
+    updateTTSBtn();
+    if (!ttsEnabled) {
+      speechSynthesis.cancel();
+      ttsQueue = [];
+      ttsSpeaking = false;
+      document.getElementById('ttsBar').classList.remove('show');
+    }
+  }
+
+  function updateTTSBtn() {
+    const btn = document.getElementById('ttsBtn');
+    btn.textContent = ttsEnabled ? '🔊' : '🔇';
+    btn.classList.toggle('active', ttsEnabled);
+    btn.title = ttsEnabled
+      ? (uiLang==='ko' ? '음성 켜짐 — 탭하여 끄기' : 'TTS ON — tap to off')
+      : (uiLang==='ko' ? '음성 끄기 — 탭하여 켜기' : 'TTS OFF — tap to on');
+    // 패널 토글 (길게 누르면 패널, 짧게 누르면 on/off)
+  }
+
+  // 길게 누르면 속도 패널 표시
+  let ttsLongPressTimer = null;
+  document.getElementById('ttsBtn').addEventListener('pointerdown', () => {
+    ttsLongPressTimer = setTimeout(() => {
+      ttsPanelOpen = !ttsPanelOpen;
+      document.getElementById('ttsPanel').classList.toggle('show', ttsPanelOpen);
+    }, 500);
+  });
+  document.getElementById('ttsBtn').addEventListener('pointerup',   () => clearTimeout(ttsLongPressTimer));
+  document.getElementById('ttsBtn').addEventListener('pointerleave',() => clearTimeout(ttsLongPressTimer));
+
+  // 패널 외부 클릭 시 닫기
+  document.addEventListener('pointerdown', e => {
+    if (ttsPanelOpen &&
+        !document.getElementById('ttsPanel').contains(e.target) &&
+        !document.getElementById('ttsBtn').contains(e.target)) {
+      ttsPanelOpen = false;
+      document.getElementById('ttsPanel').classList.remove('show');
+    }
+  });
+
+  function onTTSSpeedChange(val) {
+    ttsSpeed = parseFloat(val);
+    document.getElementById('ttsSpeedVal').textContent = ttsSpeed.toFixed(1) + '×';
+    localStorage.setItem('tts-speed', ttsSpeed);
+  }
+  function onTTSPitchChange(val) {
+    ttsPitch = parseFloat(val);
+    document.getElementById('ttsPitchVal').textContent = ttsPitch.toFixed(1);
+    localStorage.setItem('tts-pitch', ttsPitch);
+  }
+
+  function ttsSpeak(text) {
+    if (!ttsEnabled || !text.trim()) return;
+    ttsQueue.push(text);
+    if (!ttsSpeaking) ttsNext();
+  }
+
+  function ttsNext() {
+    if (!ttsQueue.length || !ttsEnabled) {
+      ttsSpeaking = false;
+      document.getElementById('ttsBar').classList.remove('show');
+      return;
+    }
+    ttsSpeaking = true;
+    document.getElementById('ttsBar').classList.add('show');
+    const text = ttsQueue.shift();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang  = TTS_LANG[currentLang] || 'ko-KR';
+    utter.rate  = ttsSpeed;
+    utter.pitch = ttsPitch;
+
+    // Chrome 버그: 15초 이상 텍스트는 멈춤 → 주기적으로 resume()
+    const resumeTimer = setInterval(() => {
+      if (speechSynthesis.speaking) speechSynthesis.resume();
+    }, 10000);
+
+    utter.onend = () => {
+      clearInterval(resumeTimer);
+      ttsNext(); // 대기열 다음 항목
+    };
+    utter.onerror = e => {
+      clearInterval(resumeTimer);
+      console.warn('[TTS] error:', e.error);
+      ttsNext();
+    };
+
+    speechSynthesis.speak(utter);
+  }
+
+  // 탭 복귀 시 Chrome TTS가 멈추는 버그 대응
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ttsSpeaking) {
+      speechSynthesis.resume();
+    }
+  });
+
+  // 초기값 복원
+  ttsEnabled = localStorage.getItem('tts-enabled') === '1';
+  ttsSpeed   = parseFloat(localStorage.getItem('tts-speed') || '1.0');
+  ttsPitch   = parseFloat(localStorage.getItem('tts-pitch') || '1.0');
+  document.getElementById('ttsSpeed').value = ttsSpeed;
+  document.getElementById('ttsPitch').value = ttsPitch;
+  document.getElementById('ttsSpeedVal').textContent = ttsSpeed.toFixed(1) + '×';
+  document.getElementById('ttsPitchVal').textContent = ttsPitch.toFixed(1);
+  updateTTSBtn();
 
   /* ── 초기화 ── */
   setUILang(uiLang);
