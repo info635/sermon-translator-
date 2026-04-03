@@ -462,6 +462,39 @@
 
     ::-webkit-scrollbar { width: 0; height: 0; }
 
+    /* ── 오디오 잠금 해제 오버레이 ── */
+    .audio-unlock {
+      position: fixed; inset: 0;
+      background: var(--overlay);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; z-index: 500;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .audio-unlock-icon { font-size: 52px; }
+    .audio-unlock-title {
+      font-size: 20px; font-weight: 600;
+      color: var(--text); text-align: center;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    .audio-unlock-sub {
+      font-size: 14px; color: var(--text2);
+      text-align: center; line-height: 1.7;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    .audio-unlock-btn {
+      padding: 14px 36px;
+      border-radius: 24px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: 16px; font-weight: 700;
+      font-family: 'Noto Sans KR', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    }
+
     /* ── TTS 패널 ── */
     .tts-panel {
       position: fixed;
@@ -498,6 +531,14 @@
   </style>
 </head>
 <body>
+
+<!-- 오디오 잠금 해제 오버레이 (모바일 자동재생 차단 해결) -->
+<div class="audio-unlock" id="audioUnlock" style="display:none;" onclick="unlockAudio()">
+  <div class="audio-unlock-icon">🔊</div>
+  <div class="audio-unlock-title" id="unlockTitle">음성 서비스 활성화</div>
+  <div class="audio-unlock-sub" id="unlockSub">탭하면 번역된 내용을<br>음성으로 읽어드립니다</div>
+  <button class="audio-unlock-btn" id="unlockBtn">탭하여 시작</button>
+</div>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -613,7 +654,7 @@
   /* ── Pusher 설정 ── */
   const PUSHER_KEY     = '9970878443f485296baf';
   const PUSHER_CLUSTER = 'mt1';
-
+  
   /* ── 언어 정보 ── */
   const LANG_INFO = {
     ko:    { flag:'🇰🇷', name:'한국어',  nameEn:'Korean'   },
@@ -933,6 +974,7 @@
     fa:'fa-IR', pa:'pa-IN',
   };
 
+  let audioUnlocked = false;  // 모바일 오디오 잠금 해제 여부
   let ttsEnabled   = localStorage.getItem('tts-enabled') === '1';
   let ttsSpeed     = parseFloat(localStorage.getItem('tts-speed')  || '1.0');
   let ttsPitch     = parseFloat(localStorage.getItem('tts-pitch')  || '1.0');
@@ -945,11 +987,48 @@
     ttsEnabled = !ttsEnabled;
     localStorage.setItem('tts-enabled', ttsEnabled ? '1' : '0');
     updateTTSBtn();
+    if (ttsEnabled && !audioUnlocked) {
+      // 모바일에서 오디오 잠금 해제 오버레이 표시
+      showAudioUnlock();
+    }
     if (!ttsEnabled) {
       speechSynthesis.cancel();
       ttsQueue = [];
       ttsSpeaking = false;
       document.getElementById('ttsBar').classList.remove('show');
+    }
+  }
+
+  function showAudioUnlock() {
+    const el = document.getElementById('audioUnlock');
+    const isKo = uiLang === 'ko';
+    document.getElementById('unlockTitle').textContent = isKo ? '음성 서비스 활성화' : 'Enable Audio';
+    document.getElementById('unlockSub').innerHTML = isKo
+      ? '탭하면 번역된 내용을<br>음성으로 읽어드립니다'
+      : 'Tap to enable audio<br>for translated content';
+    document.getElementById('unlockBtn').textContent = isKo ? '탭하여 시작' : 'Tap to Start';
+    el.style.display = 'flex';
+  }
+
+  async function unlockAudio() {
+    // 사용자 탭으로 오디오 잠금 해제
+    try {
+      // 짧은 무음 오디오로 unlock
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      await ctx.resume();
+    } catch(e) { /* 무시 */ }
+
+    audioUnlocked = true;
+    document.getElementById('audioUnlock').style.display = 'none';
+
+    // 대기 중인 큐 즉시 재생
+    if (ttsEnabled && ttsQueue.length > 0 && !ttsSpeaking) {
+      ttsNext();
     }
   }
 
@@ -1046,7 +1125,18 @@
       await new Promise((res, rej) => {
         audio.onended = res;
         audio.onerror = rej;
-        audio.play().catch(rej);
+        audio.play().then(() => {
+          audioUnlocked = true; // 재생 성공 → 잠금 해제 확인
+        }).catch(err => {
+          // 모바일 자동재생 차단 → 잠금 해제 오버레이 표시
+          if (err.name === 'NotAllowedError') {
+            ttsQueue.unshift(audio._text || ''); // 텍스트 다시 큐에 넣기
+            showAudioUnlock();
+            rej(err);
+          } else {
+            rej(err);
+          }
+        });
       });
       URL.revokeObjectURL(audioUrl);
     } catch(e) {
@@ -1080,10 +1170,6 @@
 </script>
 </body>
 </html>
-
-
- 
-
 
 
 
