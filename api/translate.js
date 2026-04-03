@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST만 허용' });
 
-  const { text, refText, langs, srcLang } = req.body;
+  const { text, refText, langs, srcLang, sermonContext } = req.body;
   // srcLang: 'en' | 'ko' (원본 언어)
   // langs: 번역 대상 언어 배열 ['ko', 'en', 'es', 'zh-cn', 'zh-hk', 'fa', 'pa']
 
@@ -207,10 +207,14 @@ resurrection = 부활
     const srcName = SRC_NAME[src] || 'English';
     const refSection = buildGlossarySection(refText, targetLang);
 
-    // 컨텍스트 섹션 (앞 문장 맥락)
-    const contextSection = req.body.context
-      ? `\n\n[이전 번역 맥락 — 대명사/고유명사 일관성 유지에 활용]\n${req.body.context}\n[맥락 끝]`
+    // 컨텍스트 섹션 (앞 문장 맥락 + 설교 노트)
+    const prevContext = req.body.context
+      ? `\n\n[이전 번역 맥락 — 대명사/고유명사 일관성 유지]\n${req.body.context}\n[맥락 끝]`
       : '';
+    const sermonSection = sermonContext
+      ? `\n\n[오늘 설교 노트 — 주요 단어/개념/이름 참고용]\n${sermonContext.slice(0, 1200)}\n[설교 노트 끝]`
+      : '';
+    const contextSection = prevContext + sermonSection;
 
     const targets = {
       ko: {
