@@ -77,21 +77,161 @@ module.exports = async (req, res) => {
     return filtered.join('\n').trim();
   }
 
+  // ── 범개신교 개혁주의/복음주의 핵심 신학 용어 (내장) ──
+  const BUILT_IN_GLOSSARY = `
+[구원론]
+justification = 칭의 (의롭다 하심)
+sanctification = 성화
+glorification = 영화
+regeneration = 중생 (거듭남)
+conversion = 회심
+repentance = 회개
+faith = 믿음
+grace = 은혜
+atonement = 속죄
+redemption = 구속
+propitiation = 화목제물
+reconciliation = 화목
+forgiveness of sins = 죄 사함
+salvation = 구원
+election = 선택 / 택하심
+predestination = 예정
+
+[하나님론]
+sovereignty = 주권
+omnipotence = 전능하심
+omniscience = 전지하심
+omnipresence = 편재하심
+holiness = 거룩하심
+righteousness = 공의
+mercy = 자비
+lovingkindness = 인자하심
+Trinity = 삼위일체
+the Father = 하나님 아버지
+the Son = 성자
+the Holy Spirit = 성령
+incarnation = 성육신
+glory = 영광
+wrath = 진노
+kingdom of God = 하나님 나라
+
+[기독론]
+Lord = 주님
+Savior = 구주
+Messiah = 메시아
+Christ = 그리스도
+resurrection = 부활
+ascension = 승천
+second coming = 재림
+cross = 십자가
+crucifixion = 십자가 죽음 / 십자가 처형
+the blood of Christ = 그리스도의 보혈
+sacrifice = 희생 / 제사
+
+[성령론]
+the Holy Spirit = 성령
+indwelling = 내주하심
+filling = 충만
+fruit of the Spirit = 성령의 열매
+gifts of the Spirit = 성령의 은사
+conviction = 죄를 깨닫게 하심
+
+[교회론]
+the Church = 교회
+congregation = 회중 / 성도
+baptism = 세례
+Lord's Supper = 성찬
+communion = 성찬
+worship = 예배
+sermon = 설교
+pastor = 목사
+elder = 장로
+deacon = 집사
+fellowship = 교제
+ministry = 사역
+mission = 선교
+discipleship = 제자도
+stewardship = 청지기 정신
+
+[성경론]
+Scripture = 성경
+the Word = 말씀
+the Word of God = 하나님의 말씀
+inspiration = 영감
+inerrancy = 무오성
+revelation = 계시
+covenant = 언약
+the Old Testament = 구약
+the New Testament = 신약
+the Gospel = 복음
+
+[종말론]
+eternal life = 영생
+heaven = 천국 / 하늘나라
+hell = 지옥
+judgment = 심판
+the last day = 마지막 날
+resurrection = 부활
+`.trim();
+
+  // ── 설교 문체 규칙 ──
+  const SERMON_STYLE_KO = `
+[청중 호칭]
+- beloved / dear friends / brothers and sisters → "사랑하는 여러분" 또는 "사랑하는 성도 여러분"
+- saints / congregation → "성도 여러분"
+
+[설교 특유 표현]
+- I want you to know / understand → "아시기 바랍니다"
+- Let me tell you / say → "말씀드리겠습니다"
+- I believe → "믿습니다"
+- The Bible says / Scripture tells us → "성경은 말씀합니다"
+- God is saying / God is telling us → "하나님께서 말씀하십니다"
+- Turn with me to → "함께 ~말씀을 펴시겠습니다"
+- Let us pray → "기도하겠습니다"
+- Amen → "아멘"
+- Hallelujah → "할렐루야"
+
+[문장 마무리 패턴]
+- 권면: "~하시기 바랍니다" / "~하십시오"
+- 선포: "~입니다" / "~습니다"
+- 강조: "반드시 ~해야 합니다" / "~해야 할 것입니다"
+- 질문: "~하지 않겠습니까?" / "~하시겠습니까?"
+
+[번역 금지]
+- 영어 어순 직역 금지
+- 구어체/존댓말 혼용 금지
+- 서양식 표현을 한국 설교 표현으로 자연스럽게 변환
+`.trim();
+
   function buildConfig(targetLang) {
     const srcName = SRC_NAME[src] || 'English';
     const refSection = buildGlossarySection(refText, targetLang);
 
+    // 컨텍스트 섹션 (앞 문장 맥락)
+    const contextSection = req.body.context
+      ? `\n\n[이전 번역 맥락 — 대명사/고유명사 일관성 유지에 활용]\n${req.body.context}\n[맥락 끝]`
+      : '';
+
     const targets = {
       ko: {
-        system: `당신은 번역 전문가입니다. 입력된 텍스트를 무조건 한국어로 번역합니다.${refSection}
-절대 규칙 (예외 없음):
-- 입력이 어떤 형태든 (짧은 단어, 문장 일부, 불명확한 텍스트) 반드시 번역만 출력
-- 번역 거부, 설명 요청, 경고, 주석, 괄호 메모 절대 금지
-- "죄송합니다", "제공해주신", "완전하지 않습니다" 같은 표현 절대 사용 금지
-- 텍스트가 불완전해 보여도 그대로 번역
-- 개역개정판 성경 구절, 합쇼체 설교 문체 사용
-- 출력: 번역문만`,
-        prompt: `번역하세요:\n\n${text}`
+        system: `당신은 범개신교 개혁주의/복음주의 설교 전문 번역가입니다.
+영어 설교를 자연스러운 한국어 설교 문체로 번역합니다.${contextSection}${refSection}
+
+━━━ 내장 신학 용어집 (반드시 아래 번역어 사용) ━━━
+${BUILT_IN_GLOSSARY}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━ 설교 문체 규칙 ━━━
+${SERMON_STYLE_KO}
+━━━━━━━━━━━━━━━━━━━━━
+
+━━━ 절대 규칙 ━━━
+- 반드시 번역문만 출력 (설명, 주석, 괄호 메모 절대 금지)
+- 번역 거부 절대 금지 (텍스트가 짧거나 불완전해도 번역)
+- 개역개정판 성경 구절 사용
+- 합쇼체 사용 (~입니다, ~습니다, ~하십시오)
+- "죄송합니다", "제공해주신" 같은 표현 절대 사용 금지`,
+        prompt: `다음 영어 설교를 한국어로 번역하세요:\n\n${text}`
       },
       en: {
         system: `You are a translator. Translate any input text to English. No exceptions.${refSection}
