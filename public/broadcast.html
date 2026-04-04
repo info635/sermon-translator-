@@ -414,8 +414,8 @@
     </div>
     <!-- 탭 -->
     <div class="gl-tabs">
-      <button class="gl-tab on" id="tabMine"   onclick="switchTab('mine')">우리 교회 용어</button>
-      <button class="gl-tab"    id="tabBuiltin" onclick="switchTab('builtin')">내장 신학 용어</button>
+      <button class="gl-tab on" id="tabMine"   onclick="switchGlossaryTab('mine')">우리 교회 용어</button>
+      <button class="gl-tab"    id="tabBuiltin" onclick="switchGlossaryTab('builtin')">내장 신학 용어</button>
     </div>
     <!-- 추가 폼 (내 용어 탭만) -->
     <div class="gl-add-row" id="glAddRow">
@@ -595,7 +595,7 @@
     updateRefTextFromGlossary();
     document.getElementById('glossaryBg').classList.add('on');
     // 모달이 열린 후 탭 전환 (display:none 상태에서 렌더 방지)
-    setTimeout(() => switchTab(currentGlTab), 10);
+    setTimeout(() => switchGlossaryTab(currentGlTab), 10);
   }
   function closeGlossary() {
     document.getElementById('glossaryBg').classList.remove('on');
@@ -604,7 +604,7 @@
     if (e.target === document.getElementById('glossaryBg')) closeGlossary();
   }
 
-  function switchTab(tab) {
+  function switchGlossaryTab(tab) {
     currentGlTab = tab;
     const tabMine    = document.getElementById('tabMine');
     const tabBuiltin = document.getElementById('tabBuiltin');
