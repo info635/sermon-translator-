@@ -654,7 +654,7 @@
   /* ── Pusher 설정 ── */
   const PUSHER_KEY     = '9970878443f485296baf';
   const PUSHER_CLUSTER = 'mt1';
-  
+
   /* ── 언어 정보 ── */
   const LANG_INFO = {
     ko:    { flag:'🇰🇷', name:'한국어',  nameEn:'Korean'   },
@@ -1100,13 +1100,32 @@
   }
 
   // ── Google TTS 오디오 fetch ──
+  // ── 오디오 프리패치 캐시 ──
+  // 재생 중에 다음 항목을 미리 fetch해서 딜레이 제거
+  const ttsCache = new Map(); // text → audioObjectURL
+
   async function fetchTTSAudio(text) {
+    // 캐시 히트
+    if (ttsCache.has(text)) return ttsCache.get(text);
+
     const url = '/api/tts?lang=' + encodeURIComponent(currentLang)
               + '&text=' + encodeURIComponent(text);
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
-    return URL.createObjectURL(blob);
+    const objUrl = URL.createObjectURL(blob);
+    ttsCache.set(text, objUrl);
+    return objUrl;
+  }
+
+  function prefetchNext() {
+    // 큐에 다음 항목이 있으면 백그라운드에서 미리 fetch
+    if (ttsQueue.length > 0) {
+      const next = ttsQueue[0];
+      if (!ttsCache.has(next)) {
+        fetchTTSAudio(next).catch(() => {}); // 실패해도 무시
+      }
+    }
   }
 
   // ── 큐 재생 ──
@@ -1120,23 +1139,34 @@
     document.getElementById('ttsBar').classList.add('show');
     const text = ttsQueue.shift();
 
+    // 다음 항목 미리 fetch 시작 (현재 재생과 병렬)
+    prefetchNext();
+
     try {
-      // Google Cloud TTS fetch (await OK — 이미 unlocked)
+      // 캐시에 있으면 즉시, 없으면 fetch
       const audioUrl = await fetchTTSAudio(text);
 
-      // 공유 Audio 엘리먼트에 src 설정 후 재생
       sharedAudio.src = audioUrl;
       sharedAudio.playbackRate = ttsSpeed;
 
       await new Promise((resolve, reject) => {
-        sharedAudio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
-        sharedAudio.onerror = () => { URL.revokeObjectURL(audioUrl); reject(new Error('audio error')); };
+        sharedAudio.onended = () => {
+          ttsCache.delete(text);          // 재생 완료 → 캐시 해제
+          URL.revokeObjectURL(audioUrl);
+          prefetchNext();                 // 다음 항목 한 번 더 확인
+          resolve();
+        };
+        sharedAudio.onerror = () => {
+          ttsCache.delete(text);
+          URL.revokeObjectURL(audioUrl);
+          reject(new Error('audio error'));
+        };
         sharedAudio.play().catch(reject);
       });
 
     } catch(e) {
       console.warn('[TTS] 실패, 브라우저 TTS로 폴백:', e.message);
-      // 브라우저 내장 TTS 폴백
+      ttsCache.delete(text);
       try {
         await new Promise((resolve, reject) => {
           const utter = new SpeechSynthesisUtterance(text);
@@ -1185,6 +1215,8 @@
 
 
 
+  
+ 
   
 
 
