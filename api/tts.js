@@ -4,7 +4,7 @@
 //   2. GOOGLE_TTS_API_KEY     = 단순 API Key
 
 const cache = new Map();
-const CACHE_TTL = 60 * 1000;
+const CACHE_TTL = 5 * 60 * 1000; // 5분
 
 const VOICE_MAP = {
   'ko':    { languageCode: 'ko-KR', name: 'ko-KR-Neural2-C' },
