@@ -6,6 +6,10 @@
 const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5분
 
+// Service Account 액세스 토큰 캐시 (1시간 유효 → 55분 재사용)
+let cachedToken = null;
+let tokenExpiry = 0;
+
 const VOICE_MAP = {
   'ko':    { languageCode: 'ko-KR', name: 'ko-KR-Neural2-C' },
   'en':    { languageCode: 'en-US', name: 'en-US-Neural2-F' },
@@ -17,6 +21,12 @@ const VOICE_MAP = {
 };
 
 async function getServiceAccountToken(credentials) {
+  // 캐시된 토큰이 유효하면 재사용 (매 요청마다 oauth 호출 방지)
+  const nowMs = Date.now();
+  if (cachedToken && nowMs < tokenExpiry) {
+    return cachedToken;
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const header  = { alg: 'RS256', typ: 'JWT' };
   const payload = {
@@ -39,7 +49,12 @@ async function getServiceAccountToken(credentials) {
   });
   const tokenData = await tokenRes.json();
   if (!tokenData.access_token) throw new Error('토큰 발급 실패: ' + JSON.stringify(tokenData));
-  return tokenData.access_token;
+
+  // 토큰 캐시 (55분 — 1시간 유효에서 5분 여유)
+  cachedToken = tokenData.access_token;
+  tokenExpiry = Date.now() + (55 * 60 * 1000);
+
+  return cachedToken;
 }
 
 module.exports = async (req, res) => {
