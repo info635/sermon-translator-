@@ -1095,6 +1095,12 @@
       return;
     }
 
+    // 큐에 추가하기 전에 즉시 fetch 시작 (딜레이 최소화 핵심)
+    // 재생 차례가 됐을 때 이미 오디오가 준비되어 있음
+    if (!ttsCache.has(text)) {
+      fetchTTSAudio(text).catch(() => {});
+    }
+
     ttsQueue.push(text);
     if (!ttsSpeaking) ttsNext();
   }
@@ -1214,10 +1220,6 @@
 </html>
 
 
-
-  
- 
-  
 
 
 
