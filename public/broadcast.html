@@ -1230,11 +1230,20 @@
           if (autoMode) {
             clearTimeout(silTimer);
             const gap = parseInt(document.getElementById('gapSel').value);
-            if (!isTranslating) {
-              silTimer = setTimeout(() => {
-                if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
-              }, gap);
-            }
+            // 번역 중이어도 타이머는 항상 걸기
+            // → 번역 완료 후 새 텍스트 자동 처리
+            silTimer = setTimeout(() => {
+              if (document.getElementById('src').value.trim()) {
+                if (!isTranslating) {
+                  doTranslate();
+                } else {
+                  // 아직 번역 중이면 짧게 재시도
+                  silTimer = setTimeout(() => {
+                    if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
+                  }, 500);
+                }
+              }
+            }, gap);
           }
         } else { interim += txt; }
       }
@@ -1419,11 +1428,27 @@
       document.getElementById('src').value=tt; updateWC();
       activeLangs.forEach(l=>{ appendToLog(l, tt, null, timeStr, e.message); });
       toast('Error: '+e.message);
+      // 네트워크 오류 등 일시적 실패 → 3초 후 자동 재시도
+      if (autoMode && e.message !== 'No text to translate') {
+        setTimeout(() => {
+          if (document.getElementById('src').value.trim() && !isTranslating) {
+            doTranslate();
+          }
+        }, 3000);
+      }
     }
     isTranslating=false;
     document.getElementById('tBtn').disabled=false;
     document.getElementById('spinEl').classList.remove('on');
     document.getElementById('tBadge').classList.remove('on');
+
+    // 번역 완료 후 텍스트박스에 새 내용이 쌓여 있으면 즉시 번역
+    if (autoMode && document.getElementById('src').value.trim()) {
+      clearTimeout(silTimer);
+      silTimer = setTimeout(() => {
+        if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
+      }, 300);
+    }
   }
 
   function appendToLog(lang, srcText, translation, timeStr, errorMsg) {
