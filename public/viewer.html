@@ -660,10 +660,13 @@
     ko:    { flag:'🇰🇷', name:'한국어',  nameEn:'Korean'   },
     en:    { flag:'🇺🇸', name:'English', nameEn:'English'  },
     es:    { flag:'🇪🇸', name:'Español', nameEn:'Spanish'  },
+    fr:    { flag:'🇫🇷', name:'Français',nameEn:'French'   },
     'zh-cn':{ flag:'🇨🇳', name:'普通话',  nameEn:'Mandarin' },
     'zh-hk':{ flag:'🇭🇰', name:'廣東話',  nameEn:'Cantonese'},
     fa:    { flag:'🇮🇷', name:'فارسی',   nameEn:'Persian'  },
     pa:    { flag:'🇮🇳', name:'ਪੰਜਾਬੀ',  nameEn:'Punjabi'  },
+    tl:    { flag:'🇵🇭', name:'Tagalog', nameEn:'Tagalog'  },
+    ru:    { flag:'🇷🇺', name:'Русский', nameEn:'Russian'  },
   };
 
   const params      = new URLSearchParams(location.search);
@@ -969,9 +972,10 @@
 
   // 언어 → Google TTS 언어코드
   const TTS_LANG = {
-    ko:'ko-KR', en:'en-US', es:'es-ES',
+    ko:'ko-KR', en:'en-US', es:'es-ES', fr:'fr-FR',
     'zh-cn':'zh-CN', 'zh-hk':'zh-HK',
     fa:'fa-IR', pa:'pa-IN',
+    tl:'fil-PH', ru:'ru-RU',
   };
 
   // ══════════════════════════════════════
@@ -1218,6 +1222,10 @@
 </script>
 </body>
 </html>
+
+
+
+
 
 
 
