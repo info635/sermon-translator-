@@ -35,17 +35,27 @@ module.exports = async (req, res) => {
   };
   const langInfo = langMap[lang] || langMap['en'];
 
-  // 시스템 프롬프트 — 정확한 받아쓰기에 집중
+  // 시스템 프롬프트 — 정확한 받아쓰기 + 자연스러운 구두점
   const prompt = `You are a professional speech-to-text transcriber for sermons and Christian preaching.
 
 Task: Transcribe the following audio EXACTLY as spoken in ${langInfo.code}.
 
-Rules:
-- Output ONLY the transcribed text — no commentary, no labels, no quotation marks
+CRITICAL — Punctuation rules (very important for sentence boundary detection):
+- Add a period (.) at the end of complete sentences
+- Add a comma (,) at natural pauses within a sentence
+- Add a question mark (?) for questions
+- Add an exclamation mark (!) for emphatic statements
+- For Korean: 마침표(.)를 문장 끝(다/요/까/네 등)에 반드시 추가
+- For French: utilisez la ponctuation française correctement
+
+Transcription rules:
+- Output ONLY the transcribed text — no commentary, no labels, no quotation marks around the whole text
 - Preserve the speaker's natural speech patterns
 - For Bible verse references, transcribe as spoken (e.g., "John 3:16", "요한복음 3장 16절")
 - If the audio is silent or contains no speech, output an empty string (nothing)
 - If the audio is unclear or incomplete, transcribe what you can hear
+- If the chunk starts mid-sentence (continuing from a previous chunk), don't add a starting capital
+- If the chunk ends mid-sentence (will continue in next chunk), don't add a period — leave it open
 - Do not add any explanations, headers, or metadata
 - Do not translate — only transcribe in ${langInfo.code}`;
 
