@@ -12,12 +12,15 @@ let tokenExpiry = 0;
 
 const VOICE_MAP = {
   'ko':    { languageCode: 'ko-KR', name: 'ko-KR-Neural2-C' },
-  'en':    { languageCode: 'en-US', name: 'en-US-Neural2-F' },
+  'en':    { languageCode: 'en-US', name: 'en-US-Neural2-D' },
   'es':    { languageCode: 'es-ES', name: 'es-ES-Neural2-A' },
+  'fr':    { languageCode: 'fr-FR', name: 'fr-FR-Neural2-B' },
   'zh-cn': { languageCode: 'zh-CN', name: 'zh-CN-Neural2-D' },
   'zh-hk': { languageCode: 'zh-HK', name: 'zh-HK-Neural2-B' },
   'fa':    { languageCode: 'fa-IR', name: 'fa-IR-Standard-B' },
   'pa':    { languageCode: 'pa-IN', name: 'pa-IN-Standard-B' },
+  'tl':    { languageCode: 'fil-PH', name: 'fil-PH-Neural2-D' },
+  'ru':    { languageCode: 'ru-RU', name: 'ru-RU-Standard-D' },
 };
 
 async function getServiceAccountToken(credentials) {
