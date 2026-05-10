@@ -346,7 +346,7 @@
   </button>
   <div class="c-sep"></div>
   <button class="tog on" id="autoTog" onclick="toggleAuto()"></button>
-  <span class="c-label" data-ko="자동 번역" data-en="Auto">자동 번역</span>
+  <span class="c-label" data-ko="스마트 번역" data-en="Smart">스마트 번역</span>
   <select id="gapSel" class="c-select">
     <option value="300">0.3s ⚡</option>
     <option value="500">0.5s ⚡</option>
@@ -1397,26 +1397,44 @@
         const cur = document.getElementById('src').value;
         document.getElementById('src').value = (cur + ' ' + text).trim();
         updateWC();
-        b.textContent = '✓ ' + text.slice(0, 60) + (text.length > 60 ? '…' : '');
+
+        // 상태 메시지 — 다음 처리 예고
+        const fullText = document.getElementById('src').value.trim();
+        if (isCompleteSentence(fullText)) {
+          b.textContent = (uiLang==='ko' ? '✓ 문장 완성 — 곧 번역됩니다' : '✓ Complete sentence — translating soon');
+        } else {
+          b.textContent = (uiLang==='ko' ? '✓ 듣는 중 — 다음 발화 대기...' : '✓ Listening — waiting for more...');
+        }
       } else {
         b.textContent = '● ' + (uiLang==='ko' ? '듣고 있습니다...' : 'Listening...');
       }
 
-      // 자동 번역 트리거
+      // ━━━ 스마트 번역 트리거 (하이브리드) ━━━
+      // 1. 완성된 문장으로 끝남 → 빠른 번역 (700ms)
+      // 2. 진행 중 + 충분히 김 (200자+) → 즉시 번역
+      // 3. 진행 중 + 짧음 → 10초까지 대기 (다음 청크 합쳐서)
       if (autoMode) {
         clearTimeout(silTimer);
-        const gap = parseInt(document.getElementById('gapSel').value);
-        silTimer = setTimeout(() => {
-          if (document.getElementById('src').value.trim()) {
-            if (!isTranslating) {
-              doTranslate();
-            } else {
-              silTimer = setTimeout(() => {
-                if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
-              }, 500);
+        const fullText = document.getElementById('src').value.trim();
+        const decision = decideTranslateTiming(fullText);
+
+        if (decision.mode === 'force') {
+          // 즉시 번역 (오래 누적되거나 강제 대기 만료)
+          if (!isTranslating) doTranslate();
+        } else {
+          const delay = decision.delay;
+          silTimer = setTimeout(() => {
+            if (document.getElementById('src').value.trim()) {
+              if (!isTranslating) {
+                doTranslate();
+              } else {
+                silTimer = setTimeout(() => {
+                  if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
+                }, 500);
+              }
             }
-          }
-        }, gap);
+          }, delay);
+        }
       }
     } catch (e) {
       console.error('[STT] fetch failed:', e);
@@ -1425,6 +1443,60 @@
         b.textContent = '⚠ ' + (uiLang==='ko' ? '네트워크 오류 — 다시 시도 중' : 'Network error — retrying');
       }
     }
+  }
+
+  // ━━━ 스마트 번역 타이밍 결정 ━━━
+  // 문장 경계 + 길이 + 대기 시간을 종합 판단
+  let firstChunkSince = 0; // 마지막 번역 이후 첫 청크가 도착한 시각
+
+  function decideTranslateTiming(text) {
+    if (!text || text.length === 0) {
+      return { mode: 'wait', delay: 8000 };
+    }
+
+    // 마지막 번역 이후 누적 시간 추적
+    if (firstChunkSince === 0) firstChunkSince = Date.now();
+    const waitedMs = Date.now() - firstChunkSince;
+
+    // 1. 너무 오래 누적됨 (12초 이상) → 강제 번역
+    if (waitedMs > 12000) {
+      return { mode: 'force' };
+    }
+
+    // 2. 너무 길어짐 (300자 이상) → 강제 번역
+    if (text.length > 300) {
+      return { mode: 'force' };
+    }
+
+    // 3. 완성된 문장으로 끝남 → 빠른 번역 (다음 청크 살짝 기다림)
+    if (isCompleteSentence(text)) {
+      return { mode: 'wait', delay: 800 };
+    }
+
+    // 4. 진행 중인 문장 (마침표 없음) → 다음 청크 기다림
+    return { mode: 'wait', delay: 8000 };
+  }
+
+  function isCompleteSentence(text) {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+
+    // 영어/유럽 언어: 마침표, 물음표, 느낌표로 끝남
+    if (/[.!?。!？](["'\)」』]*)$/.test(trimmed)) return true;
+
+    // 한국어: 종결어미 + 선택적 마침표
+    // -다, -요, -까, -네, -아, -자, -라 등
+    if (/[다요까지죠네라이오아자세][\.!?。!？]?$/.test(trimmed)) return true;
+
+    // 한국어 의문/감탄
+    if (/[니가까]\??$/.test(trimmed)) return true;
+
+    return false;
+  }
+
+  // 번역 시작 시 firstChunkSince 리셋 (doTranslate에서 호출됨)
+  function resetChunkTimer() {
+    firstChunkSince = 0;
   }
 
   function blobToBase64(blob) {
@@ -1523,6 +1595,7 @@
     if(activeLangs.size===0){toast(uiLang==='ko'?'언어를 선택해주세요':'Select a language');return;}
     if(isTranslating)return;
     isTranslating=true;
+    if (typeof resetChunkTimer === 'function') resetChunkTimer(); // 누적 타이머 리셋
     document.getElementById('tBtn').disabled=true;
     document.getElementById('spinEl').classList.add('on');
     document.getElementById('tBadge').classList.add('on');
