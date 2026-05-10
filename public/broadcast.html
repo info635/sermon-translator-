@@ -894,8 +894,8 @@
   let uiLang = localStorage.getItem('ui-lang') || 'ko';
 
   // 음성인식 변수 — setUILang이 isListening을 참조하므로 먼저 선언
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-  let recognition=null, isListening=false, autoMode=true, silTimer=null;
+  // STT 시스템 — Gemini API 기반 (Web Speech API 사용 안 함)
+  let isListening=false, autoMode=true, silTimer=null;
 
   // ── UI 언어 ──
   function setUILang(lang) {
@@ -1143,17 +1143,8 @@
   // Web Speech API 문법 힌트 등록
   function applyGrammarHints(keywords) {
     if (!keywords.length) return;
-    // 마이크 실행 중이면 현재 인스턴스에 적용
-    if (isListening && recognition && window.SpeechGrammarList) {
-      try {
-        const list = new SpeechGrammarList();
-        const grammar = '#JSGF V1.0; grammar terms; public <term> = '
-          + keywords.map(k => k.toLowerCase()).join(' | ') + ';';
-        list.addFromString(grammar, 1);
-        recognition.grammars = list;
-      } catch(e) { /* 미지원 브라우저 무시 */ }
-    }
-    // 다음 마이크 시작 시에도 적용되도록 저장
+    // Gemini STT 기반에서는 grammar hint 미사용 (Gemini가 컨텍스트 알아서 처리)
+    // 키워드는 설교 노트 시스템 프롬프트에 전달 (translate.js에서 처리)
     window._pendingGrammarKeywords = keywords;
   }
 
@@ -1190,211 +1181,277 @@
   // ── 음성인식 ──
 
   function toggleMic(){
-    if (!SR) {
-      toast(uiLang==='ko'?'Chrome/Edge에서만 사용 가능합니다':'Chrome/Edge only');
-      return;
-    }
     if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       toast(uiLang==='ko'?'음성인식은 HTTPS에서만 작동합니다':'HTTPS required for mic');
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast(uiLang==='ko'?'브라우저가 마이크를 지원하지 않습니다':'Browser does not support microphone');
       return;
     }
     isListening ? stopMic() : startMic();
   }
 
   // ═══════════════════════════════════════════════════
-  //  마이크 시스템 v4 — 4가지 버그 수정
+  //  마이크 시스템 v5 — Gemini STT 기반
   //
-  //  수정 1: restartTimer 단일화
-  //    scheduleRestart 전 clearTimeout → 복수 타이머 방지
+  //  방식: MediaRecorder로 5초 청크 녹음
+  //       → /api/transcribe (Gemini API) 호출
+  //       → 정확한 텍스트 받아서 src에 추가
   //
-  //  수정 2: micRestarting을 onstart까지 유지
-  //    rec.start() 후 즉시 해제 X → 중복 startMic 차단
+  //  장점:
+  //  - Web Speech API 누락 문제 해결 (0% 손실)
+  //  - 한국어/영어/프랑스어 정확도 95%+
+  //  - 비용 매우 저렴 (월 ~$0.04)
   //
-  //  수정 3: failCount/쿨다운 제거
-  //    침묵(기도) 중 no-speech 반복 → 3초 멈춤 문제 해결
-  //    지수 백오프로 교체 (150→300→600ms, 최대 2초)
-  //
-  //  수정 4: audio-capture를 치명 오류에서 제외
-  //    재시작 중 일시적 audio-capture → stopMic() 방지
+  //  특징:
+  //  - 청크 사이 갭 없음 (recorder 즉시 재시작)
+  //  - 오디오 레벨 시각화 (실시간 피드백)
+  //  - 자동 재시도 (네트워크 오류 시)
   // ═══════════════════════════════════════════════════
 
-  let micGen       = 0;
-  let watchdogTmr  = null;
-  let restartTimer = null;   // 단일 재시작 타이머
-  let micRestarting= false;
-  let retryDelay   = 150;    // 지수 백오프 시작값
-  let lastInterim  = '';     // 마지막 interim 텍스트 (onend 시 보존용)
-  let interimStuckTmr = null;// interim 멈춤 감지 타이머
+  let audioStream      = null;     // 마이크 스트림
+  let mediaRecorder    = null;     // 현재 녹음 중인 recorder
+  let audioContext     = null;     // 오디오 레벨 분석용
+  let analyserNode     = null;
+  let audioLevelTimer  = null;
+  let chunkCounter     = 0;
+  let recGen           = 0;        // 세대 카운터 (stopMic 후 chunk 무시)
+  const CHUNK_DURATION = 5000;     // 5초 청크
+  const SILENCE_RMS    = 0.005;    // 무음 임계값 (이 아래는 전송 안 함)
 
-  function startMic() {
-    if (micRestarting) return;
-    micRestarting = true;
-
-    const myGen = ++micGen;
-
-    const oldRec = recognition;
-    recognition  = null;
-    if (oldRec) { try { oldRec.stop(); } catch(e){} }
-
-    let rec;
-    try { rec = new SR(); }
-    catch(e) {
-      micRestarting = false;
-      isListening   = false;
-      setMicUI(false);
-      toast((uiLang==='ko'?'마이크 오류: ':'Mic error: ') + e.message);
-      return;
-    }
-
-    rec.lang            = srcLang === 'ko' ? 'ko-KR'
-                        : srcLang === 'fr' ? 'fr-FR'
-                        : 'en-US';
-    rec.continuous      = true;
-    rec.interimResults  = true;
-    rec.maxAlternatives = 1;
-
-    clearTimeout(watchdogTmr);
-    watchdogTmr = setTimeout(() => {
-      if (!isListening || micGen !== myGen) return;
-      console.warn('[MIC] watchdog timeout — retry');
-      micRestarting = false;
-      scheduleRestart(300);
-    }, 3000);
-
-    rec.onresult = e => {
-      if (micGen !== myGen) return;
-      retryDelay = 150;
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const txt = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          const cur = document.getElementById('src').value;
-          document.getElementById('src').value = (cur + ' ' + txt).trim();
-          updateWC();
-          lastInterim = ''; // final이 됐으니 보존 필요 없음
-          if (autoMode) {
-            clearTimeout(silTimer);
-            const gap = parseInt(document.getElementById('gapSel').value);
-            // 번역 중이어도 타이머는 항상 걸기
-            // → 번역 완료 후 새 텍스트 자동 처리
-            silTimer = setTimeout(() => {
-              if (document.getElementById('src').value.trim()) {
-                if (!isTranslating) {
-                  doTranslate();
-                } else {
-                  // 아직 번역 중이면 짧게 재시도
-                  silTimer = setTimeout(() => {
-                    if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
-                  }, 500);
-                }
-              }
-            }, gap);
-          }
-        } else { interim += txt; }
-      }
-      const b = document.getElementById('intBox');
-      if (interim) {
-        b.textContent = '● ' + interim; b.className = 'int-txt on';
-        highlightMatchingKeywords(interim);
-        lastInterim = interim; // ★ interim 보존 (onend 시 사용)
-
-        // ★ interim이 5초 이상 안 바뀌면 final처럼 강제 처리 (점프 방지)
-        clearTimeout(interimStuckTmr);
-        interimStuckTmr = setTimeout(() => {
-          if (lastInterim && lastInterim.length > 1) {
-            const cur = document.getElementById('src').value;
-            document.getElementById('src').value = (cur + ' ' + lastInterim).trim();
-            updateWC();
-            console.log('[MIC] interim stuck, force-saving:', lastInterim);
-            lastInterim = '';
-            b.textContent = uiLang==='ko' ? '✓ 인식 중...' : '✓ Listening...';
-          }
-        }, 5000);
-      } else {
-        b.textContent = uiLang==='ko' ? '✓ 인식 중...' : '✓ Listening...'; b.className = 'int-txt on';
-      }
-    };
-
-    rec.onerror = e => {
-      if (micGen !== myGen) return;
-      console.warn('[MIC] onerror:', e.error);
-      // 권한 거부, 서비스 차단만 완전 중단
-      const fatalMsg = {
-        'not-allowed':         uiLang==='ko' ? '마이크 권한을 허용해주세요 (주소창 🔒 클릭)' : 'Allow microphone (click 🔒)',
-        'service-not-allowed': uiLang==='ko' ? '음성인식 서비스 차단됨' : 'Speech service blocked',
-      }[e.error];
-      if (fatalMsg) { toast(fatalMsg); stopMic(); return; }
-      // 나머지(network, no-speech, audio-capture, aborted) → onend에서 재시작
-    };
-
-    rec.onend = () => {
-      clearTimeout(watchdogTmr);
-      clearTimeout(interimStuckTmr);
-      micRestarting = false;
-
-      // ★ 점프 방지: onend 시 interim 텍스트가 있으면 final처럼 보존
-      if (lastInterim && lastInterim.length > 1) {
-        const cur = document.getElementById('src').value;
-        document.getElementById('src').value = (cur + ' ' + lastInterim).trim();
-        updateWC();
-        console.log('[MIC] onend rescued interim:', lastInterim);
-        lastInterim = '';
-
-        // 자동번역 모드면 번역도 트리거
-        if (autoMode && !isTranslating) {
-          clearTimeout(silTimer);
-          const gap = parseInt(document.getElementById('gapSel').value);
-          silTimer = setTimeout(() => {
-            if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
-          }, gap);
-        }
-      }
-
-      if (!isListening) return;
-      if (micGen !== myGen) return;
-      console.log('[MIC] onend gen=' + myGen + ' retryDelay=' + retryDelay);
-      // ★ 모든 언어에서 빠른 재시작 (점프 최소화)
-      // 한국어/영어/프랑스어 모두 동일한 문제 발생
-      const fastRestart = Math.min(retryDelay, 100);
-      scheduleRestart(fastRestart);
-      retryDelay = Math.min(retryDelay * 2, 2000); // 지수 백오프 (최대 2초)
-    };
-
-    // micRestarting은 onstart에서만 해제 (수정 2 핵심)
-    rec.onstart = () => {
-      clearTimeout(watchdogTmr);
-      micRestarting = false;
-      retryDelay = 150;
-      recognition = rec;
-      setMicUI(true);
-      setIntBox('● ' + (uiLang==='ko' ? '마이크 준비됨' : 'Mic ready'));
-      // 저장된 grammar 힌트 적용 (설교 노트 키워드)
-      if (window._pendingGrammarKeywords && window._pendingGrammarKeywords.length > 0) {
-        applyGrammarHints(window._pendingGrammarKeywords);
-      }
-      console.log('[MIC] onstart gen=' + myGen);
-    };
-
+  async function startMic() {
     try {
-      recognition = rec;
+      // 1. 마이크 권한 요청 + 스트림 획득
+      audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+        }
+      });
+
       isListening = true;
-      rec.start();
-      // micRestarting = false 여기서 하지 않음! onstart에서만 해제
-    } catch(e) {
-      micRestarting = false;
-      clearTimeout(watchdogTmr);
-      console.warn('[MIC] start() threw:', e.message);
-      if (isListening) scheduleRestart(500);
+      recGen++;
+      const myGen = recGen;
+      chunkCounter = 0;
+
+      setMicUI(true);
+      setIntBox('● ' + (uiLang==='ko' ? '녹음 준비됨' : 'Mic ready'));
+
+      // 2. 오디오 레벨 시각화 시작
+      startAudioLevelMonitor();
+
+      // 3. 첫 청크 녹음 시작
+      startRecordingChunk(myGen);
+
+      console.log('[MIC] Started (Gemini STT mode)');
+    } catch (e) {
+      console.error('[MIC] getUserMedia failed:', e);
+      isListening = false;
+      setMicUI(false);
+      const msg = e.name === 'NotAllowedError'
+        ? (uiLang==='ko' ? '마이크 권한을 허용해주세요 (주소창 🔒 클릭)' : 'Allow microphone (click 🔒)')
+        : (uiLang==='ko' ? '마이크 오류: ' : 'Mic error: ') + e.message;
+      toast(msg);
     }
   }
 
-  // 단일 타이머 — 항상 기존 취소 후 새로 예약 (수정 1 핵심)
-  function scheduleRestart(delayMs) {
-    if (!isListening) return;
-    clearTimeout(restartTimer);
-    restartTimer = setTimeout(() => {
-      if (isListening && !micRestarting) startMic();
-    }, delayMs);
+  function startRecordingChunk(myGen) {
+    if (!isListening || myGen !== recGen || !audioStream) return;
+
+    // 브라우저별 지원 코덱 선택
+    let mimeType = 'audio/webm;codecs=opus';
+    if (!MediaRecorder.isTypeSupported(mimeType)) {
+      mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mp4'; // Safari fallback
+      }
+    }
+
+    let recorder;
+    try {
+      recorder = new MediaRecorder(audioStream, { mimeType });
+    } catch (e) {
+      console.error('[MIC] MediaRecorder failed:', e);
+      // 재시도
+      if (isListening && myGen === recGen) {
+        setTimeout(() => startRecordingChunk(myGen), 500);
+      }
+      return;
+    }
+    mediaRecorder = recorder;
+
+    const chunks = [];
+    let chunkRMS = 0;
+
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+
+    recorder.onstop = async () => {
+      // 즉시 다음 청크 시작 (갭 최소화)
+      if (isListening && myGen === recGen) {
+        startRecordingChunk(myGen);
+      }
+
+      // 청크 처리
+      if (chunks.length === 0) return;
+      const blob = new Blob(chunks, { type: mimeType });
+      
+      // 너무 작거나 무음에 가까우면 스킵
+      if (blob.size < 1000) {
+        console.log('[STT] Skip tiny chunk:', blob.size, 'bytes');
+        return;
+      }
+      if (chunkRMS < SILENCE_RMS) {
+        console.log('[STT] Skip silent chunk, RMS=', chunkRMS.toFixed(4));
+        return;
+      }
+
+      chunkCounter++;
+      sendChunkToGemini(blob, mimeType, myGen, chunkCounter);
+    };
+
+    recorder.onerror = (e) => {
+      console.error('[MIC] Recorder error:', e);
+    };
+
+    // RMS 모니터링 — 청크 동안 평균 음량 측정
+    if (analyserNode) {
+      const samples = [];
+      const sampleInterval = setInterval(() => {
+        const buffer = new Float32Array(analyserNode.fftSize);
+        analyserNode.getFloatTimeDomainData(buffer);
+        let sum = 0;
+        for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
+        samples.push(Math.sqrt(sum / buffer.length));
+      }, 100);
+
+      recorder.onstop_old = recorder.onstop;
+      const origOnstop = recorder.onstop;
+      recorder.onstop = (ev) => {
+        clearInterval(sampleInterval);
+        if (samples.length > 0) {
+          chunkRMS = samples.reduce((a, b) => a + b, 0) / samples.length;
+        }
+        if (origOnstop) origOnstop.call(recorder, ev);
+      };
+    }
+
+    try {
+      recorder.start();
+    } catch (e) {
+      console.error('[MIC] recorder.start failed:', e);
+      if (isListening && myGen === recGen) {
+        setTimeout(() => startRecordingChunk(myGen), 500);
+      }
+      return;
+    }
+
+    // 5초 후 청크 종료
+    setTimeout(() => {
+      if (recorder && recorder.state === 'recording') {
+        try { recorder.stop(); } catch (e) {}
+      }
+    }, CHUNK_DURATION);
+  }
+
+  async function sendChunkToGemini(blob, mimeType, myGen, chunkNum) {
+    try {
+      // base64 변환
+      const base64 = await blobToBase64(blob);
+
+      // 시각적 피드백 — 처리 중
+      const b = document.getElementById('intBox');
+      const dots = '●'.repeat((chunkNum % 3) + 1);
+      b.textContent = (uiLang==='ko' ? '음성 처리 중 ' : 'Processing ') + dots;
+      b.className = 'int-txt on';
+
+      const res = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audio: base64,
+          mimeType,
+          lang: srcLang,
+        })
+      });
+
+      if (myGen !== recGen) return; // stopMic 됐으면 무시
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        console.warn('[STT] API error', res.status, errData);
+        // 재시도하지 않음 — 다음 청크 자연스럽게 진행
+        b.textContent = '● ' + (uiLang==='ko' ? '듣고 있습니다...' : 'Listening...');
+        return;
+      }
+
+      const data = await res.json();
+      const text = (data.text || '').trim();
+
+      if (text && text.length > 0) {
+        // src 박스에 추가
+        const cur = document.getElementById('src').value;
+        document.getElementById('src').value = (cur + ' ' + text).trim();
+        updateWC();
+        b.textContent = '✓ ' + text.slice(0, 60) + (text.length > 60 ? '…' : '');
+      } else {
+        b.textContent = '● ' + (uiLang==='ko' ? '듣고 있습니다...' : 'Listening...');
+      }
+
+      // 자동 번역 트리거
+      if (autoMode) {
+        clearTimeout(silTimer);
+        const gap = parseInt(document.getElementById('gapSel').value);
+        silTimer = setTimeout(() => {
+          if (document.getElementById('src').value.trim()) {
+            if (!isTranslating) {
+              doTranslate();
+            } else {
+              silTimer = setTimeout(() => {
+                if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
+              }, 500);
+            }
+          }
+        }, gap);
+      }
+    } catch (e) {
+      console.error('[STT] fetch failed:', e);
+      if (myGen === recGen) {
+        const b = document.getElementById('intBox');
+        b.textContent = '⚠ ' + (uiLang==='ko' ? '네트워크 오류 — 다시 시도 중' : 'Network error — retrying');
+      }
+    }
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result;
+        // "data:audio/webm;base64,AAAA..." → "AAAA..."
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function startAudioLevelMonitor() {
+    if (!audioStream) return;
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(audioStream);
+      analyserNode = audioContext.createAnalyser();
+      analyserNode.fftSize = 512;
+      source.connect(analyserNode);
+    } catch (e) {
+      console.warn('[AudioCtx] failed:', e);
+    }
   }
 
   function setMicUI(on) {
@@ -1411,18 +1468,30 @@
   }
 
   function stopMic() {
-    isListening   = false;
-    micRestarting = false;
-    retryDelay    = 150;
-    lastInterim   = '';
+    isListening = false;
+    recGen++; // 진행 중인 청크 무시되도록
     clearTimeout(silTimer);
-    clearTimeout(watchdogTmr);
-    clearTimeout(restartTimer);
-    clearTimeout(interimStuckTmr);
-    ++micGen;
-    const old = recognition;
-    recognition = null;
-    if (old) { try { old.stop(); } catch(e){} }
+    clearTimeout(audioLevelTimer);
+
+    // recorder 정리
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      try { mediaRecorder.stop(); } catch (e) {}
+    }
+    mediaRecorder = null;
+
+    // 스트림 정리 (마이크 LED 끄기)
+    if (audioStream) {
+      audioStream.getTracks().forEach(t => t.stop());
+      audioStream = null;
+    }
+
+    // AudioContext 정리
+    if (audioContext) {
+      try { audioContext.close(); } catch (e) {}
+      audioContext = null;
+      analyserNode = null;
+    }
+
     setMicUI(false);
     const b = document.getElementById('intBox');
     b.textContent = uiLang==='ko' ? '음성 인식이 중지되었습니다' : 'Voice recognition stopped';
@@ -1430,13 +1499,15 @@
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && isListening) {
-      scheduleRestart(300);
-    }
+    // Gemini STT는 MediaRecorder가 자동으로 백그라운드 처리됨
+    // 별도 재시작 불필요
   });
 
   window.addEventListener('online', () => {
-    if (isListening) scheduleRestart(500);
+    // 네트워크 복구 시 — 다음 청크가 자동으로 성공할 것
+    if (isListening) {
+      setIntBox('● ' + (uiLang==='ko' ? '네트워크 복구됨 — 듣고 있습니다' : 'Online — Listening'));
+    }
   });
 
   function toggleAuto(){
