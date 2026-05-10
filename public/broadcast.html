@@ -173,8 +173,36 @@
     .t-badge.on { display:flex; }
 
     /* HISTORY */
-    .hist { background:var(--surface2); border-top:1px solid var(--border); padding:6px 20px; display:none; flex-shrink:0; }
-    .hist-row { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+    .hist {
+      background:var(--surface2); border-top:1px solid var(--border);
+      padding:8px 16px; display:none; flex-shrink:0;
+      max-height:120px; overflow-y:auto;
+    }
+    .hist.show { display:block; }
+    .hist-head {
+      display:flex; align-items:center; gap:8px;
+      font-size:11px; color:var(--text3); letter-spacing:.06em;
+      margin-bottom:6px; text-transform:uppercase;
+    }
+    .hist-head-clear {
+      margin-left:auto; background:none; border:none; cursor:pointer;
+      font-size:11px; color:var(--text3); font-family:inherit;
+    }
+    .hist-head-clear:hover { color:var(--accent); }
+    .hist-row { display:flex; flex-direction:column; gap:4px; }
+    .hist-item {
+      display:flex; gap:8px; padding:5px 8px;
+      background:var(--surface); border-radius:5px;
+      font-size:13px; line-height:1.5;
+      border-left:2px solid var(--accent);
+    }
+    .hist-time {
+      color:var(--text3); font-size:11px;
+      font-family:'DM Mono',monospace;
+      flex-shrink:0; padding-top:2px;
+      min-width:50px;
+    }
+    .hist-text { color:var(--text2); flex:1; }
     .hist-row::-webkit-scrollbar { height:2px; }
     .hist-row::-webkit-scrollbar-thumb { background:var(--border); }
     .h-chip { flex-shrink:0; max-width:200px; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:5px 10px; cursor:pointer; transition:border-color .15s; }
@@ -309,6 +337,7 @@
   <div class="seg">
     <button class="seg-btn on" id="src-en" onclick="setSrcLang('en')">🇺🇸 EN</button>
     <button class="seg-btn"    id="src-ko" onclick="setSrcLang('ko')">🇰🇷 KO</button>
+    <button class="seg-btn"    id="src-fr" onclick="setSrcLang('fr')">🇫🇷 FR</button>
   </div>
   <div class="c-sep"></div>
   <button id="micBtn" class="mic-btn" onclick="toggleMic()">
@@ -350,10 +379,13 @@
   <div class="lang-chip on" data-lang="ko" onclick="toggleLang('ko')"><span class="chip-f">🇰🇷</span><span>한국어</span><span class="chip-b">개역개정</span></div>
   <div class="lang-chip"    data-lang="en" onclick="toggleLang('en')"><span class="chip-f">🇺🇸</span><span>English</span><span class="chip-b">NIV</span></div>
   <div class="lang-chip"    data-lang="es" onclick="toggleLang('es')"><span class="chip-f">🇪🇸</span><span>Español</span><span class="chip-b">RV60</span></div>
+  <div class="lang-chip"    data-lang="fr" onclick="toggleLang('fr')"><span class="chip-f">🇫🇷</span><span>Français</span><span class="chip-b">LSG</span></div>
   <div class="lang-chip"    data-lang="zh-cn" onclick="toggleLang('zh-cn')"><span class="chip-f">🇨🇳</span><span>普通话</span><span class="chip-b">和合本</span></div>
   <div class="lang-chip"    data-lang="zh-hk" onclick="toggleLang('zh-hk')"><span class="chip-f">🇭🇰</span><span>廣東話</span><span class="chip-b">和合本</span></div>
   <div class="lang-chip"    data-lang="fa" onclick="toggleLang('fa')"><span class="chip-f">🇮🇷</span><span>فارسی</span><span class="chip-b">کتاب مقدس</span></div>
   <div class="lang-chip"    data-lang="pa" onclick="toggleLang('pa')"><span class="chip-f">🇮🇳</span><span>ਪੰਜਾਬੀ</span><span class="chip-b">ਬਾਈਬਲ</span></div>
+  <div class="lang-chip"    data-lang="tl" onclick="toggleLang('tl')"><span class="chip-f">🇵🇭</span><span>Tagalog</span><span class="chip-b">MBB</span></div>
+  <div class="lang-chip"    data-lang="ru" onclick="toggleLang('ru')"><span class="chip-f">🇷🇺</span><span>Русский</span><span class="chip-b">Синодальный</span></div>
   <div class="ls-links" id="lsLinks"></div>
 </div>
 
@@ -396,7 +428,13 @@
   </div>
 </main>
 
-<div class="hist" id="hist"><div class="hist-row" id="histRow"></div></div>
+<div class="hist" id="hist">
+  <div class="hist-head">
+    <span data-ko="🎙️ 인식된 음성 누적" data-en="🎙️ Recognized Speech Log">🎙️ 인식된 음성 누적</span>
+    <button class="hist-head-clear" onclick="clearHistLog()" data-ko="지우기" data-en="Clear">지우기</button>
+  </div>
+  <div class="hist-row" id="histRow"></div>
+</div>
 
 <div class="modal-bg" id="modalBg" onclick="hideModal(event)">
   <div class="modal">
@@ -478,9 +516,10 @@
   const BASE = PRODUCTION_URL || location.origin;
   const LANGS = {
     ko:{flag:'🇰🇷',name:'한국어'}, en:{flag:'🇺🇸',name:'English'},
-    es:{flag:'🇪🇸',name:'Español'},
+    es:{flag:'🇪🇸',name:'Español'}, fr:{flag:'🇫🇷',name:'Français'},
     'zh-cn':{flag:'🇨🇳',name:'普通话'}, 'zh-hk':{flag:'🇭🇰',name:'廣東話'},
     fa:{flag:'🇮🇷',name:'فارسی'}, pa:{flag:'🇮🇳',name:'ਪੰਜਾਬੀ'},
+    tl:{flag:'🇵🇭',name:'Tagalog'}, ru:{flag:'🇷🇺',name:'Русский'},
   };
 
   let srcLang='en', activeLangs=new Set(['ko']);
@@ -887,13 +926,14 @@
     srcLang = lang;
     document.getElementById('src-en').classList.toggle('on', lang==='en');
     document.getElementById('src-ko').classList.toggle('on', lang==='ko');
+    document.getElementById('src-fr').classList.toggle('on', lang==='fr');
     if (isListening) { stopMic(); setTimeout(startMic, 300); }
     document.querySelectorAll('.lang-chip').forEach(c => {
       c.style.display = c.dataset.lang === lang ? 'none' : '';
       if (c.dataset.lang === lang) activeLangs.delete(lang);
     });
     if (activeLangs.size === 0) {
-      const def = lang==='en'?'ko':'en';
+      const def = lang==='en' ? 'ko' : lang==='ko' ? 'en' : 'ko';
       activeLangs.add(def);
       document.querySelector('.lang-chip[data-lang="'+def+'"]')?.classList.add('on');
     }
@@ -1183,6 +1223,8 @@
   let restartTimer = null;   // 단일 재시작 타이머
   let micRestarting= false;
   let retryDelay   = 150;    // 지수 백오프 시작값
+  let lastInterim  = '';     // 마지막 interim 텍스트 (onend 시 보존용)
+  let interimStuckTmr = null;// interim 멈춤 감지 타이머
 
   function startMic() {
     if (micRestarting) return;
@@ -1204,7 +1246,9 @@
       return;
     }
 
-    rec.lang            = srcLang === 'ko' ? 'ko-KR' : 'en-US';
+    rec.lang            = srcLang === 'ko' ? 'ko-KR'
+                        : srcLang === 'fr' ? 'fr-FR'
+                        : 'en-US';
     rec.continuous      = true;
     rec.interimResults  = true;
     rec.maxAlternatives = 1;
@@ -1227,6 +1271,7 @@
           const cur = document.getElementById('src').value;
           document.getElementById('src').value = (cur + ' ' + txt).trim();
           updateWC();
+          lastInterim = ''; // final이 됐으니 보존 필요 없음
           if (autoMode) {
             clearTimeout(silTimer);
             const gap = parseInt(document.getElementById('gapSel').value);
@@ -1251,6 +1296,20 @@
       if (interim) {
         b.textContent = '● ' + interim; b.className = 'int-txt on';
         highlightMatchingKeywords(interim);
+        lastInterim = interim; // ★ interim 보존 (onend 시 사용)
+
+        // ★ interim이 5초 이상 안 바뀌면 final처럼 강제 처리 (점프 방지)
+        clearTimeout(interimStuckTmr);
+        interimStuckTmr = setTimeout(() => {
+          if (lastInterim && lastInterim.length > 1) {
+            const cur = document.getElementById('src').value;
+            document.getElementById('src').value = (cur + ' ' + lastInterim).trim();
+            updateWC();
+            console.log('[MIC] interim stuck, force-saving:', lastInterim);
+            lastInterim = '';
+            b.textContent = uiLang==='ko' ? '✓ 인식 중...' : '✓ Listening...';
+          }
+        }, 5000);
       } else {
         b.textContent = uiLang==='ko' ? '✓ 인식 중...' : '✓ Listening...'; b.className = 'int-txt on';
       }
@@ -1270,11 +1329,34 @@
 
     rec.onend = () => {
       clearTimeout(watchdogTmr);
+      clearTimeout(interimStuckTmr);
       micRestarting = false;
+
+      // ★ 점프 방지: onend 시 interim 텍스트가 있으면 final처럼 보존
+      if (lastInterim && lastInterim.length > 1) {
+        const cur = document.getElementById('src').value;
+        document.getElementById('src').value = (cur + ' ' + lastInterim).trim();
+        updateWC();
+        console.log('[MIC] onend rescued interim:', lastInterim);
+        lastInterim = '';
+
+        // 자동번역 모드면 번역도 트리거
+        if (autoMode && !isTranslating) {
+          clearTimeout(silTimer);
+          const gap = parseInt(document.getElementById('gapSel').value);
+          silTimer = setTimeout(() => {
+            if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
+          }, gap);
+        }
+      }
+
       if (!isListening) return;
       if (micGen !== myGen) return;
       console.log('[MIC] onend gen=' + myGen + ' retryDelay=' + retryDelay);
-      scheduleRestart(retryDelay);
+      // ★ 모든 언어에서 빠른 재시작 (점프 최소화)
+      // 한국어/영어/프랑스어 모두 동일한 문제 발생
+      const fastRestart = Math.min(retryDelay, 100);
+      scheduleRestart(fastRestart);
       retryDelay = Math.min(retryDelay * 2, 2000); // 지수 백오프 (최대 2초)
     };
 
@@ -1332,9 +1414,11 @@
     isListening   = false;
     micRestarting = false;
     retryDelay    = 150;
+    lastInterim   = '';
     clearTimeout(silTimer);
     clearTimeout(watchdogTmr);
     clearTimeout(restartTimer);
+    clearTimeout(interimStuckTmr);
     ++micGen;
     const old = recognition;
     recognition = null;
@@ -1375,6 +1459,9 @@
     const tt=text;
     const timeStr=new Date().toLocaleTimeString();
     document.getElementById('src').value=''; updateWC();
+
+    // ★ 원문 누적 — 번역 완료 후에도 화면에 남김
+    addToHistory(tt, timeStr);
 
     // 번역 중 표시
     activeLangs.forEach(l=>{
@@ -1510,6 +1597,39 @@
     document.getElementById('sentLbl').textContent='';
     document.getElementById('lastTime').textContent='';
     toast(uiLang==='ko'?'기록이 삭제됐습니다':'Log cleared');
+  }
+
+  // ★ 인식된 음성 누적 (번역 완료 후에도 화면에 유지)
+  function addToHistory(text, timeStr) {
+    histArr.push({ text, time: timeStr });
+    if (histArr.length > 100) histArr.shift(); // 최대 100개
+    renderHistList();
+  }
+
+  function renderHistList() {
+    const hist = document.getElementById('hist');
+    const row  = document.getElementById('histRow');
+    if (histArr.length === 0) {
+      hist.classList.remove('show');
+      hist.style.display = 'none';
+      row.innerHTML = ''; // ★ DOM도 비우기
+      return;
+    }
+    hist.classList.add('show');
+    hist.style.display = 'block';
+    // 최신이 위로 (역순)
+    row.innerHTML = histArr.slice().reverse().map(h =>
+      '<div class="hist-item">'
+      + '<span class="hist-time">' + h.time.slice(0, 8) + '</span>'
+      + '<span class="hist-text">' + escHtml(h.text) + '</span>'
+      + '</div>'
+    ).join('');
+  }
+
+  function clearHistLog() {
+    histArr = [];
+    renderHistList();
+    toast(uiLang==='ko'?'음성 기록이 삭제됐습니다':'Speech log cleared');
   }
 
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'ping',langs:['ko']})})
