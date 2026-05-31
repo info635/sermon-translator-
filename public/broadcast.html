@@ -398,6 +398,17 @@
   <span id="intBox" class="int-txt" data-ko="마이크 버튼을 누르면 음성 인식이 시작됩니다" data-en="Press the mic button to start voice recognition">마이크 버튼을 누르면 음성 인식이 시작됩니다</span>
 </div>
 
+<!-- 진단 패널 — 마이크 작동 여부 실시간 확인 -->
+<div id="diagBar" style="display:none;background:#1a1a1a;border-top:1px solid #333;padding:8px 16px;font-family:'DM Mono',monospace;font-size:12px;color:#888;flex-shrink:0;">
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <span style="color:#666;">🎤</span>
+    <span id="diagLevel" style="color:#888;">레벨: ░░░░░░░░░░ 0%</span>
+    <span id="diagChunk" style="color:#888;">청크: -</span>
+    <span id="diagResult" style="color:#888;">결과: -</span>
+    <span id="diagWarn" style="color:#ff7777;font-weight:bold;"></span>
+  </div>
+</div>
+
 <!-- 설교 노트 키워드 패널 -->
 <div class="kw-panel" id="kwPanel">
   <span class="kw-label" id="kwLabel">🎯 인식 힌트:</span>
@@ -1248,7 +1259,15 @@
       setMicUI(true);
       setIntBox('● ' + (uiLang==='ko' ? '듣고 있습니다...' : 'Listening...'));
 
+      // 진단 패널 표시
+      document.getElementById('diagBar').style.display = 'block';
+      document.getElementById('diagLevel').textContent = '레벨: ░░░░░░░░░░ 0%';
+      document.getElementById('diagChunk').textContent = '청크: 대기중...';
+      document.getElementById('diagResult').textContent = '결과: -';
+      document.getElementById('diagWarn').textContent = '';
+
       startAudioLevelMonitor();
+      startMicLevelDisplay();  // 화면에 마이크 레벨 실시간 표시
       startRecordingChunk(myGen);
 
       console.log('[MIC] Started (Gemini STT mode)');
@@ -1339,7 +1358,10 @@
 
       chunkCounter++;
       const mySeq = chunkCounter;
-      console.log('[STT] Sending chunk #' + mySeq + ', size=' + blob.size + ', RMS=' + (hasRMS ? chunkRMS.toFixed(4) : 'n/a'));
+      const sizeKB = (blob.size / 1024).toFixed(1);
+      const rmsTxt = hasRMS ? chunkRMS.toFixed(4) : 'n/a';
+      console.log('[STT] Sending chunk #' + mySeq + ', size=' + blob.size + ', RMS=' + rmsTxt);
+      document.getElementById('diagChunk').textContent = '청크 #' + mySeq + ': ' + sizeKB + 'KB (RMS=' + rmsTxt + ')';
       sendChunkToGemini(blob, mimeType, myGen, mySeq);
     };
 
@@ -1391,18 +1413,26 @@
       }
 
       let text = '';
+      const diagResEl = document.getElementById('diagResult');
       if (res.ok) {
         const data = await res.json();
         text = (data.text || '').trim();
         if (text) {
           console.log('[STT] Chunk #' + mySeq + ' → "' + text + '"');
+          diagResEl.textContent = '결과 #' + mySeq + ': "' + text.slice(0, 50) + '"';
+          diagResEl.style.color = '#88ff88';
         } else {
-          // 빈 응답 — 디버그 정보 출력 (원인 추적)
+          // 빈 응답 — 디버그 정보 출력
           console.warn('[STT] Chunk #' + mySeq + ' returned EMPTY. Debug:', data.debug);
+          const reason = data.debug?.finishReason || data.debug?.promptFeedback?.blockReason || 'unknown';
+          diagResEl.textContent = '결과 #' + mySeq + ': (빈 응답, ' + reason + ')';
+          diagResEl.style.color = '#ffaa44';
         }
       } else {
         const errBody = await res.text().catch(() => '');
         console.error('[STT] API error chunk #' + mySeq + ', status=' + res.status, errBody);
+        diagResEl.textContent = '결과 #' + mySeq + ': API 오류 ' + res.status;
+        diagResEl.style.color = '#ff7777';
       }
 
       // 순서대로 처리 — 자기 차례까지 대기
@@ -1550,6 +1580,54 @@
     }
   }
 
+  // 화면에 실시간 마이크 레벨 표시 — 마이크 작동 여부 시각적 확인
+  let micLevelTimer = null;
+  let micLevelMaxSeen = 0;
+  let micLevelSilentCount = 0;
+  function startMicLevelDisplay() {
+    if (!analyserNode) {
+      document.getElementById('diagLevel').textContent = '레벨: (측정불가)';
+      document.getElementById('diagWarn').textContent = '⚠ AudioContext 실패';
+      return;
+    }
+    if (micLevelTimer) clearInterval(micLevelTimer);
+    micLevelMaxSeen = 0;
+    micLevelSilentCount = 0;
+    const levelEl = document.getElementById('diagLevel');
+    const warnEl  = document.getElementById('diagWarn');
+    micLevelTimer = setInterval(() => {
+      if (!isListening || !analyserNode) {
+        clearInterval(micLevelTimer);
+        return;
+      }
+      const buf = new Float32Array(analyserNode.fftSize);
+      analyserNode.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      const rms = Math.sqrt(sum / buf.length);
+      if (rms > micLevelMaxSeen) micLevelMaxSeen = rms;
+
+      // 0~100% bar
+      const pct = Math.min(100, Math.round(rms * 500));
+      const filled = Math.round(pct / 10);
+      const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
+      levelEl.textContent = '레벨: ' + bar + ' ' + pct + '%';
+      levelEl.style.color = pct > 5 ? '#88ff88' : (pct > 1 ? '#ffaa44' : '#888');
+
+      // 5초 동안 거의 무음이면 경고
+      if (rms < 0.005) {
+        micLevelSilentCount++;
+      } else {
+        micLevelSilentCount = 0;
+      }
+      if (micLevelSilentCount > 50) { // 50 × 100ms = 5초
+        warnEl.textContent = '⚠ 마이크에 소리가 안 잡힙니다 — 마이크 장치 확인';
+      } else if (warnEl.textContent.startsWith('⚠ 마이크')) {
+        warnEl.textContent = '';
+      }
+    }, 100);
+  }
+
   function setMicUI(on) {
     document.getElementById('micBtn').classList.toggle('on', on);
     document.getElementById('micLabel').textContent = on
@@ -1567,6 +1645,7 @@
     isListening = false;
     recGen++;
     clearTimeout(silTimer);
+    if (micLevelTimer) { clearInterval(micLevelTimer); micLevelTimer = null; }
     nextExpectedSeq = 1;
     pendingChunks.clear();
 
@@ -1585,6 +1664,9 @@
       audioContext = null;
       analyserNode = null;
     }
+
+    // 진단 패널 숨김
+    document.getElementById('diagBar').style.display = 'none';
 
     setMicUI(false);
     const b = document.getElementById('intBox');
