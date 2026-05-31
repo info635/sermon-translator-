@@ -1309,7 +1309,10 @@
 
     recorder.onstop = async () => {
       if (sampleInterval) clearInterval(sampleInterval);
-      if (recorder._samples && recorder._samples.length > 0) {
+
+      // RMS 실측 (audioContext 작동 시에만)
+      const hasRMS = recorder._samples && recorder._samples.length > 0;
+      if (hasRMS) {
         chunkRMS = recorder._samples.reduce((a, b) => a + b, 0) / recorder._samples.length;
       }
 
@@ -1321,15 +1324,22 @@
       if (chunks.length === 0) return;
       const blob = new Blob(chunks, { type: mimeType });
 
-      // 작은 청크 / 무음 청크 스킵
-      if (blob.size < 1000) return;
-      if (chunkRMS < SILENCE_RMS) {
+      // 작은 청크는 스킵 (블롭이 너무 짧음)
+      if (blob.size < 1000) {
+        console.log('[STT] Skip tiny chunk, size=', blob.size);
+        return;
+      }
+
+      // 무음 청크 스킵 — RMS 측정이 성공했을 때만 (실측치가 있을 때)
+      // AudioContext 실패 시 모든 청크 스킵되는 버그 방지
+      if (hasRMS && chunkRMS < SILENCE_RMS) {
         console.log('[STT] Skip silent chunk, RMS=', chunkRMS.toFixed(4));
         return;
       }
 
       chunkCounter++;
       const mySeq = chunkCounter;
+      console.log('[STT] Sending chunk #' + mySeq + ', size=' + blob.size + ', RMS=' + (hasRMS ? chunkRMS.toFixed(4) : 'n/a'));
       sendChunkToGemini(blob, mimeType, myGen, mySeq);
     };
 
@@ -1364,6 +1374,7 @@
         b.className = 'int-txt on';
       }
 
+      console.log('[STT] Fetching /api/transcribe for chunk #' + mySeq);
       const res = await fetch('/api/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1374,21 +1385,25 @@
         })
       });
 
-      if (myGen !== recGen) return;
+      if (myGen !== recGen) {
+        console.log('[STT] Chunk #' + mySeq + ' discarded (gen mismatch)');
+        return;
+      }
 
       let text = '';
       if (res.ok) {
         const data = await res.json();
         text = (data.text || '').trim();
+        console.log('[STT] Chunk #' + mySeq + ' → "' + text + '"');
       } else {
-        console.warn('[STT] API error', res.status);
+        const errBody = await res.text().catch(() => '');
+        console.error('[STT] API error chunk #' + mySeq + ', status=' + res.status, errBody);
       }
 
       // 순서대로 처리 — 자기 차례까지 대기
       processOrderedChunk(mySeq, text, myGen);
     } catch (e) {
-      console.error('[STT] fetch failed:', e);
-      // 에러여도 시퀀스 진행시켜야 다음 청크 막히지 않음
+      console.error('[STT] fetch failed chunk #' + mySeq + ':', e);
       processOrderedChunk(mySeq, '', myGen);
     }
   }
@@ -1419,39 +1434,54 @@
     const b = document.getElementById('intBox');
 
     if (text && text.length > 0) {
-      // src에 추가
+      // src에 추가 (계속 누적)
       const cur = document.getElementById('src').value;
       document.getElementById('src').value = (cur + ' ' + text).trim();
       updateWC();
 
-      // 상태 메시지
-      const fullText = document.getElementById('src').value.trim();
-      if (isCompleteSentence(fullText)) {
-        b.textContent = (uiLang==='ko' ? '✓ 문장 완성 — 곧 번역됩니다' : '✓ Complete sentence — translating soon');
-      } else {
-        b.textContent = (uiLang==='ko' ? '✓ 듣는 중 — 다음 발화 대기...' : '✓ Listening — waiting for more...');
-      }
+      // ★ 인식한 텍스트를 intBox에 그대로 표시
+      // (이전 동작 복원 — 사용자가 받아쓴 내용을 확인할 수 있도록)
+      b.textContent = '✓ ' + text;
+      b.className = 'int-txt on';
 
-      // 스마트 번역 트리거
+      // 스마트 번역 트리거 (재설계 — 청크 도착마다 시간 누적 계산)
       if (autoMode) {
-        clearTimeout(silTimer);
-        const decision = decideTranslateTiming(fullText);
+        const fullSrc = document.getElementById('src').value.trim();
+        if (fullSrc.length === 0) return;
 
-        if (decision.mode === 'force') {
-          if (!isTranslating) doTranslate();
+        // firstChunkSince: 마지막 번역 이후 첫 청크 도착 시각
+        if (firstChunkSince === 0) firstChunkSince = Date.now();
+        const elapsedMs = Date.now() - firstChunkSince;
+        const isComplete = isCompleteSentence(fullSrc);
+
+        // 결정 로직 — 청크 도착마다 누적 시간 기준으로 판단:
+        //  완성 문장: 800ms 후 번역
+        //  미완성 문장: 첫 청크 후 6초 이내 (반드시 발동)
+        //  너무 길거나 오래됨: 즉시 발동
+        const MAX_BATCH_WAIT = 6000;
+        let delay;
+        if (isComplete) {
+          delay = 800;
+        } else if (fullSrc.length > 300 || elapsedMs > MAX_BATCH_WAIT) {
+          delay = 0; // 즉시
         } else {
-          silTimer = setTimeout(() => {
-            if (document.getElementById('src').value.trim()) {
-              if (!isTranslating) {
-                doTranslate();
-              } else {
-                silTimer = setTimeout(() => {
-                  if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
-                }, 500);
-              }
-            }
-          }, decision.delay);
+          // 첫 청크 시각으로부터 6초까지 남은 시간만 기다림
+          delay = Math.max(500, MAX_BATCH_WAIT - elapsedMs);
         }
+
+        clearTimeout(silTimer);
+        silTimer = setTimeout(() => {
+          if (document.getElementById('src').value.trim()) {
+            if (!isTranslating) {
+              doTranslate();
+            } else {
+              // 이전 번역 진행 중이면 짧게 재시도
+              silTimer = setTimeout(() => {
+                if (document.getElementById('src').value.trim() && !isTranslating) doTranslate();
+              }, 500);
+            }
+          }
+        }, delay);
       }
     } else {
       b.textContent = '● ' + (uiLang==='ko' ? '듣고 있습니다...' : 'Listening...');
