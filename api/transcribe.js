@@ -98,12 +98,10 @@ Transcription rules:
 
     const data = await response.json();
     let text = '';
-    let parseError = null;
     try {
       text = data.candidates[0].content.parts[0].text || '';
     } catch(e) {
-      parseError = e.message;
-      console.error('Gemini response parsing error:', JSON.stringify(data).slice(0, 500));
+      console.error('Gemini response parsing error:', JSON.stringify(data).slice(0, 300));
     }
 
     // 정리 — Gemini가 가끔 따옴표나 메타 텍스트를 붙임
@@ -116,22 +114,7 @@ Transcription rules:
       .replace(/^\(unclear\)$/i, '')
       .trim();
 
-    // 디버그 정보 포함 — 빈 응답일 때 원인 추적용
-    const debug = {
-      audioSizeBytes: audio ? Math.round(audio.length * 3/4) : 0,
-      mimeType,
-      lang,
-      promptFeedback: data.promptFeedback || null,
-      finishReason: data.candidates?.[0]?.finishReason || null,
-      safetyRatings: data.candidates?.[0]?.safetyRatings?.length || 0,
-      parseError,
-      rawTextLen: text.length,
-    };
-    if (text.length === 0) {
-      console.log('[Transcribe] Empty result:', JSON.stringify(debug));
-    }
-
-    res.status(200).json({ text, lang, debug });
+    res.status(200).json({ text, lang });
   } catch (err) {
     console.error('Transcribe error:', err);
     res.status(500).json({ error: err.message });
