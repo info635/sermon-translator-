@@ -1394,7 +1394,12 @@
       if (res.ok) {
         const data = await res.json();
         text = (data.text || '').trim();
-        console.log('[STT] Chunk #' + mySeq + ' → "' + text + '"');
+        if (text) {
+          console.log('[STT] Chunk #' + mySeq + ' → "' + text + '"');
+        } else {
+          // 빈 응답 — 디버그 정보 출력 (원인 추적)
+          console.warn('[STT] Chunk #' + mySeq + ' returned EMPTY. Debug:', data.debug);
+        }
       } else {
         const errBody = await res.text().catch(() => '');
         console.error('[STT] API error chunk #' + mySeq + ', status=' + res.status, errBody);
