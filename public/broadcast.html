@@ -1430,9 +1430,17 @@
         }
       } else {
         const errBody = await res.text().catch(() => '');
+        let errDetail = '';
+        try {
+          const errJson = JSON.parse(errBody);
+          errDetail = errJson.detail || errJson.error || errBody;
+        } catch(e) {
+          errDetail = errBody;
+        }
         console.error('[STT] API error chunk #' + mySeq + ', status=' + res.status, errBody);
-        diagResEl.textContent = '결과 #' + mySeq + ': API 오류 ' + res.status;
+        diagResEl.textContent = '결과 #' + mySeq + ': API ' + res.status + ' — ' + errDetail.slice(0, 80);
         diagResEl.style.color = '#ff7777';
+        document.getElementById('diagWarn').textContent = '⚠ ' + errDetail.slice(0, 150);
       }
 
       // 순서대로 처리 — 자기 차례까지 대기
