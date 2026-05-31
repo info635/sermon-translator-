@@ -5,12 +5,11 @@
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST')   return res.status(405).json({ error: 'POST만 허용' });
 
-  // 디버그 모드
+  // 디버그 모드 (GET 또는 POST에서 ?debug=1)
   if (req.query && req.query.debug === '1') {
     return res.status(200).json({
       status: process.env.GEMINI_API_KEY ? '✓ 준비됨' : '✗ GEMINI_API_KEY 미설정',
@@ -18,6 +17,8 @@ module.exports = async (req, res) => {
       hasKey: !!process.env.GEMINI_API_KEY,
     });
   }
+
+  if (req.method !== 'POST')   return res.status(405).json({ error: 'POST만 허용' });
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
