@@ -11,16 +11,18 @@ let cachedToken = null;
 let tokenExpiry = 0;
 
 const VOICE_MAP = {
-  'ko':    { languageCode: 'ko-KR', name: 'ko-KR-Neural2-C' },
-  'en':    { languageCode: 'en-US', name: 'en-US-Neural2-D' },
-  'es':    { languageCode: 'es-ES', name: 'es-ES-Neural2-A' },
-  'fr':    { languageCode: 'fr-FR', name: 'fr-FR-Neural2-B' },
-  'zh-cn': { languageCode: 'zh-CN', name: 'zh-CN-Neural2-D' },
-  'zh-hk': { languageCode: 'zh-HK', name: 'zh-HK-Neural2-B' },
-  'fa':    { languageCode: 'fa-IR', name: 'fa-IR-Standard-B' },
-  'pa':    { languageCode: 'pa-IN', name: 'pa-IN-Standard-B' },
+  'ko':    { languageCode: 'ko-KR',  name: 'ko-KR-Neural2-C' },
+  'en':    { languageCode: 'en-US',  name: 'en-US-Neural2-D' },
+  'es':    { languageCode: 'es-ES',  name: 'es-ES-Neural2-A' },
+  'fr':    { languageCode: 'fr-FR',  name: 'fr-FR-Neural2-B' },
+  // 중국어: Google TTS는 zh-CN 대신 cmn-CN, zh-HK 대신 yue-HK 사용
+  //         Neural2는 중국어/광동어 미지원 → Wavenet (만다린), Standard (광동어)
+  'zh-cn': { languageCode: 'cmn-CN', name: 'cmn-CN-Wavenet-A' },
+  'zh-hk': { languageCode: 'yue-HK', name: 'yue-HK-Standard-A' },
+  'fa':    { languageCode: 'fa-IR',  name: 'fa-IR-Standard-B' },
+  'pa':    { languageCode: 'pa-IN',  name: 'pa-IN-Standard-B' },
   'tl':    { languageCode: 'fil-PH', name: 'fil-PH-Neural2-D' },
-  'ru':    { languageCode: 'ru-RU', name: 'ru-RU-Standard-D' },
+  'ru':    { languageCode: 'ru-RU',  name: 'ru-RU-Standard-D' },
 };
 
 async function getServiceAccountToken(credentials) {
